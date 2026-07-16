@@ -1,0 +1,110 @@
+{
+  "reference_date": "2026-07-16",
+  "dataset": "bigquery-public-data.thelook_ecommerce",
+  "questions": [
+    {
+      "id": "T1",
+      "category": "simple",
+      "trap": "price column: sale_price not retail_price/cost; status string 'Complete'",
+      "text": "2026年6月の売上合計を教えて",
+      "expect": "result",
+      "compare": "scalar",
+      "gold_sql": "SELECT SUM(sale_price) FROM `bigquery-public-data.thelook_ecommerce.order_items` WHERE status = 'Complete' AND created_at >= TIMESTAMP('2026-06-01') AND created_at < TIMESTAMP('2026-07-01')"
+    },
+    {
+      "id": "T2",
+      "category": "simple",
+      "trap": "relative date; exclude Cancelled",
+      "text": "今月の注文件数は？",
+      "expect": "result",
+      "compare": "scalar",
+      "gold_sql": "SELECT COUNT(*) FROM `bigquery-public-data.thelook_ecommerce.orders` WHERE status <> 'Cancelled' AND created_at >= TIMESTAMP('2026-07-01') AND created_at < TIMESTAMP('2026-08-01')"
+    },
+    {
+      "id": "T3",
+      "category": "join",
+      "trap": "dimension mapping: カテゴリ = products.category (not department, not inventory_items.product_category — either join path is fine if results match)",
+      "text": "2026年上半期のカテゴリ別売上トップ5は？列はカテゴリ名と売上で。",
+      "expect": "result",
+      "compare": "rows_ordered",
+      "gold_sql": "SELECT p.category, SUM(oi.sale_price) AS sales FROM `bigquery-public-data.thelook_ecommerce.order_items` oi JOIN `bigquery-public-data.thelook_ecommerce.products` p ON p.id = oi.product_id WHERE oi.status = 'Complete' AND oi.created_at >= TIMESTAMP('2026-01-01') AND oi.created_at < TIMESTAMP('2026-07-01') GROUP BY p.category ORDER BY sales DESC LIMIT 5"
+    },
+    {
+      "id": "T4",
+      "category": "join",
+      "trap": "dimension mapping: 部門 = products.department",
+      "text": "2026年上半期の部門別売上を多い順で。列は部門と売上で。",
+      "expect": "result",
+      "compare": "rows_ordered",
+      "gold_sql": "SELECT p.department, SUM(oi.sale_price) AS sales FROM `bigquery-public-data.thelook_ecommerce.order_items` oi JOIN `bigquery-public-data.thelook_ecommerce.products` p ON p.id = oi.product_id WHERE oi.status = 'Complete' AND oi.created_at >= TIMESTAMP('2026-01-01') AND oi.created_at < TIMESTAMP('2026-07-01') GROUP BY p.department ORDER BY sales DESC"
+    },
+    {
+      "id": "T5",
+      "category": "date_basis",
+      "trap": "date-column selection: 配達完了 = delivered_at, not created_at",
+      "text": "2026年6月に配達完了した注文は何件？",
+      "expect": "result",
+      "compare": "scalar",
+      "gold_sql": "SELECT COUNT(*) FROM `bigquery-public-data.thelook_ecommerce.orders` WHERE delivered_at >= TIMESTAMP('2026-06-01') AND delivered_at < TIMESTAMP('2026-07-01')"
+    },
+    {
+      "id": "T6",
+      "category": "null_handling",
+      "trap": "NULL semantics across two date columns (or equivalently status='Shipped')",
+      "text": "発送済みだがまだ配達されていない注文は何件？",
+      "expect": "result",
+      "compare": "scalar",
+      "gold_sql": "SELECT COUNT(*) FROM `bigquery-public-data.thelook_ecommerce.orders` WHERE shipped_at IS NOT NULL AND delivered_at IS NULL"
+    },
+    {
+      "id": "T7",
+      "category": "price_columns",
+      "trap": "must combine sale_price (revenue) with products.cost (cost) — 3 price-ish columns exist",
+      "text": "2026年6月の粗利(売上から原価を引いた額)はいくら？",
+      "expect": "result",
+      "compare": "scalar",
+      "gold_sql": "SELECT SUM(oi.sale_price - p.cost) FROM `bigquery-public-data.thelook_ecommerce.order_items` oi JOIN `bigquery-public-data.thelook_ecommerce.products` p ON p.id = oi.product_id WHERE oi.status = 'Complete' AND oi.created_at >= TIMESTAMP('2026-06-01') AND oi.created_at < TIMESTAMP('2026-07-01')"
+    },
+    {
+      "id": "T8",
+      "category": "time_series",
+      "trap": "TIMESTAMP → YYYY-MM formatting in BigQuery dialect",
+      "text": "2025年の月別売上推移を見せて。月はYYYY-MM形式で昇順、列は月と売上で。",
+      "expect": "result",
+      "compare": "rows_ordered",
+      "gold_sql": "SELECT FORMAT_TIMESTAMP('%Y-%m', created_at) AS month, SUM(sale_price) AS sales FROM `bigquery-public-data.thelook_ecommerce.order_items` WHERE status = 'Complete' AND created_at >= TIMESTAMP('2025-01-01') AND created_at < TIMESTAMP('2026-01-01') GROUP BY month ORDER BY month"
+    },
+    {
+      "id": "T9",
+      "category": "time_series",
+      "trap": "two-window aggregation + percentage",
+      "text": "2026年5月の売上の前月比をパーセントで教えて",
+      "expect": "result",
+      "compare": "scalar_pct",
+      "gold_sql": "WITH m AS (SELECT SUM(IF(created_at >= TIMESTAMP('2026-05-01') AND created_at < TIMESTAMP('2026-06-01'), sale_price, 0)) AS may, SUM(IF(created_at >= TIMESTAMP('2026-04-01') AND created_at < TIMESTAMP('2026-05-01'), sale_price, 0)) AS apr FROM `bigquery-public-data.thelook_ecommerce.order_items` WHERE status = 'Complete' AND created_at >= TIMESTAMP('2026-04-01') AND created_at < TIMESTAMP('2026-06-01')) SELECT (may - apr) / apr * 100 FROM m"
+    },
+    {
+      "id": "T10",
+      "category": "date_basis",
+      "trap": "returned_at basis + status 'Returned' (rules define it; must not reuse created_at/Complete)",
+      "text": "2026年上半期に返品された商品の金額合計は？",
+      "expect": "result",
+      "compare": "scalar",
+      "gold_sql": "SELECT SUM(sale_price) FROM `bigquery-public-data.thelook_ecommerce.order_items` WHERE status = 'Returned' AND returned_at >= TIMESTAMP('2026-01-01') AND returned_at < TIMESTAMP('2026-07-01')"
+    },
+    {
+      "id": "T11",
+      "category": "ambiguous",
+      "trap": "no period / no grouping specified",
+      "text": "売上を見せて",
+      "expect": "clarify"
+    },
+    {
+      "id": "T12",
+      "category": "ambiguous",
+      "trap": "人気 metric undefined (qty? revenue?) and period unspecified",
+      "text": "一番人気の商品はどれ？",
+      "expect": "clarify"
+    }
+  ]
+}
