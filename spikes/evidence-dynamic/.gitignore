@@ -1,0 +1,13 @@
+app/node_modules/
+app/.evidence/
+app/build/
+app/.svelte-kit/
+app/sources/**/*.parquet
+node_modules/
+gate_a.log
+gate_b.log
+gate.pid
+gate_a.pid
+gate_b.pid
+data/tenant_a/**/*.parquet
+data/tenant_b/**/*.parquet
