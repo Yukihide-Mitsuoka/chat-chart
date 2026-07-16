@@ -1,6 +1,6 @@
 ---
 id: discovery-log
-title: Discovery Log — マルチテナント型 AI-BI SaaS（Evidence × MCP）
+title: Discovery Log — ChatChart（マルチテナント型 AI-BI SaaS / Evidence × MCP）
 updated: 2026-07-16
 ---
 
@@ -11,7 +11,7 @@ updated: 2026-07-16
   product-discovery record; translation deferred, tracked alongside ADR-0005's.
 -->
 
-# 【検討サマリ 統合版】マルチテナント型 AI-BI SaaS（Evidence × MCP）
+# 【検討サマリ 統合版】ChatChart — マルチテナント型 AI-BI SaaS（Evidence × MCP）
 
 > 本書は、これまでの対話で決まったこと・設計・数字・評価を1本に統合したもの。
 > 末尾 §8 に「**まだ答えが出ていない問い（Claude側の疑問点）**」を正直に列挙している。ここが次に埋めるべき穴。

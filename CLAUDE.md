@@ -15,7 +15,7 @@ conflict, follow the authority order in [.ai/README.md](.ai/README.md)
 
 | Field | Value |
 |-------|-------|
-| Project | {{PROJECT_NAME}} — see [.ai/mission.md](.ai/mission.md) |
+| Project | ChatChart — see [.ai/mission.md](.ai/mission.md) |
 | Stack | {{STACK}} |
 | Architecture | Modular monolith, Clean Architecture, DDD — [.ai/architecture.md](.ai/architecture.md) |
 | Branching | GitHub Flow; `main` always releasable |

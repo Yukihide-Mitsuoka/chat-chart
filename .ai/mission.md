@@ -11,7 +11,7 @@ read_when: [onboarding, planning, architecture]
 
 ## What this project is
 
-{{PROJECT_NAME}} — {{ONE_SENTENCE_DESCRIPTION}}
+ChatChart — {{ONE_SENTENCE_DESCRIPTION}}
 
 | Field | Value |
 |-------|-------|
