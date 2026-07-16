@@ -34,3 +34,5 @@ Thumbs.db
 
 # Local agent state (project-shared settings ARE committed: .claude/settings.json)
 .claude/settings.local.json
+# generated artifacts
+spikes/nl2sql-accuracy/spike.db
