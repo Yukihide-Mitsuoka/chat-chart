@@ -5,7 +5,7 @@
 # OPT-IN and safe by default: the job only runs when the repository variable
 # TEMPLATE_SYNC_ENABLED is set to "true". So the template repo itself and any unmodified
 # downstream repo never run it (no spurious weekly failures). To enable sync in a
-# downstream repo: set variable TEMPLATE_SYNC_ENABLED=true AND replace {{ORG}} below.
+# downstream repo: set repo variable TEMPLATE_SYNC_ENABLED=true.
 name: Template Sync
 
 on:
@@ -27,8 +27,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: AndreasAugustin/actions-template-sync@v2
         with:
-          # TEMPLATE: replace {{ORG}} with the org/user that owns the template repo.
-          source_repo_path: "{{ORG}}/ai-dev-foundation"
+          source_repo_path: "Yukihide-Mitsuoka/ai-dev-foundation"
           upstream_branch: main
           pr_title: "build: sync with ai-dev-foundation template"
           pr_labels: "type:ci,type:dependencies"

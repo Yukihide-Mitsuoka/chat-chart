@@ -11,13 +11,11 @@ Style: **modular monolith, Clean Architecture layers inside each module, boundar
 Domain-Driven Design bounded contexts.** Start as a monolith; extract services only when
 an ADR justifies it.
 
-<!-- TEMPLATE: adjust the stack table when instantiating. The layer rules below are stack-agnostic. -->
-
 | Field | Value |
 |-------|-------|
-| Language / runtime | {{STACK}} |
-| Persistence | {{DATABASE}} |
-| Deployment target | {{DEPLOY_TARGET}} |
+| Language / runtime | TypeScript/Node 18+ (Evidence rendering core, edge authorization gate, MCP server) + Python 3.13 (NL→SQL pipeline, data tooling — current spikes). Phase 1 not started; see `docs/requirements.md` §2 |
+| Persistence | PostgreSQL with Row Level Security mandatory (Neon planned); DuckDB/Parquet as the per-tenant rendering data layer; Edge KV for result/authz caches (ADR-0005) |
+| Deployment target | Edge (Cloudflare Workers / Vercel) + CDN for the shell; LLM via Vertex AI (Gemini 3.5 Flash default, Opus 4.8 fallback — LOG-0022) |
 | Architecture docs | `docs/architecture/` |
 
 ## ARC-001: Canonical directory layout

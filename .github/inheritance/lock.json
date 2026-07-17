@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "parent": {
+    "repository": "Yukihide-Mitsuoka/ai-dev-foundation",
+    "commit": "9ab06004ed129d0d27e4a1876aa03b04d067cc71"
+  }
+}

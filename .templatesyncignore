@@ -1,15 +1,44 @@
-# Files the template-sync workflow must NEVER overwrite in downstream repos —
-# everything a project customizes. Rules/workflows/skills DO sync (that's the point).
-src/**
-tests/**
+# Legacy Template Sync remains non-authoritative during manifest migration. Keep every
+# manifest-protected path (.github/inheritance/manifest.json protected_paths) out of
+# that transport as well.
+.ai/architecture.md
+.ai/coding-rules.md
+.ai/decision-log.md
+.ai/guardrails.md
+.ai/mission.md
+.ai/review-checklist.md
+.ai/workflow.md
+.claude/hooks/guard-bash.sh
+.claude/hooks/tests/**
+.claude/settings.json
+.devcontainer/**
+.env.example
+.github/CODEOWNERS
+.github/ISSUE_TEMPLATE/**
+.github/governance/profiles/**
+.github/governance/repository.json
+.github/inheritance/lock.json
+.github/inheritance/manifest.json
+.github/workflows/ci.yml
+.github/workflows/iac.yml
+.github/workflows/security.yml
+.github/workflows/template-sync.yml
+.gitignore
+.skills/architecture.skill.md
+.skills/bugfix.skill.md
+.skills/documentation.skill.md
+.skills/feature.skill.md
+.skills/refactor.skill.md
+.skills/release.skill.md
+.skills/review.skill.md
+.skills/security.skill.md
+.skills/test.skill.md
+.templatesyncignore
+CLAUDE.md
+Makefile
+README.md
 docs/**
 profiles/**
-CLAUDE.md
-README.md
-Makefile
-.env.example
-.ai/mission.md
-.ai/decision-log.md
-.github/CODEOWNERS
-.github/governance/repository.json
-.templatesyncignore
+spikes/**
+src/**
+tests/**

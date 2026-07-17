@@ -1,20 +1,20 @@
-# CODEOWNERS — review routing. Later rules win. TEMPLATE: replace placeholders with
-# real teams/users when instantiating (format: @org/team-name or @username).
+# CODEOWNERS — review routing. Later rules win.
+# Personal account: all review routes to the owner (docs/usage.md step 3).
 
 # Default: everything needs a maintainer review
-*                       @{{ORG}}/maintainers
+*                       @Yukihide-Mitsuoka
 
 # Rule changes govern all agents — require lead review (highest scrutiny)
-/.ai/                   @{{ORG}}/leads
-/CLAUDE.md              @{{ORG}}/leads
-/AGENTS.md              @{{ORG}}/leads
-/.skills/               @{{ORG}}/leads
-/.claude/               @{{ORG}}/leads
+/.ai/                   @Yukihide-Mitsuoka
+/CLAUDE.md              @Yukihide-Mitsuoka
+/AGENTS.md              @Yukihide-Mitsuoka
+/.skills/               @Yukihide-Mitsuoka
+/.claude/               @Yukihide-Mitsuoka
 
 # Security-sensitive surfaces
-/SECURITY.md            @{{ORG}}/security
-/.github/workflows/     @{{ORG}}/security @{{ORG}}/leads
-/.pre-commit-config.yaml @{{ORG}}/security
+/SECURITY.md            @Yukihide-Mitsuoka
+/.github/workflows/     @Yukihide-Mitsuoka
+/.pre-commit-config.yaml @Yukihide-Mitsuoka
 
 # Decisions
-/docs/adr/              @{{ORG}}/leads
+/docs/adr/              @Yukihide-Mitsuoka
