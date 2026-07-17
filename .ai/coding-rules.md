@@ -34,6 +34,16 @@ the tools already decide. Suppressions require justification (GR-041).
 Comments state constraints, non-obvious reasons, and links to decisions (ADR/issue IDs).
 Delete commented-out code — git history keeps it.
 
+### COD-005: The product name is a display label, never an identifier
+The product name (currently "ChatChart") may appear only in human-facing prose:
+Markdown text, UI copy, document titles. It MUST NOT be embedded in technical
+identifiers — database roles/schemas/tables, dataset/bucket prefixes, package and
+module names, env var names, API paths, config keys, or code symbols. Use neutral,
+role-describing names instead (e.g. `app_runtime`, `t_<tenant_slug>`). Rationale: the
+name is expected to change; renaming prose is one grep-replace, renaming identifiers is
+a migration (LOG-0030). Existing stable IDs that predate the name (repo slug, GCP
+project `kotonoha-bi-dev`) are already name-independent and stay unchanged.
+
 ## Error handling
 
 ### COD-010: No silent failures

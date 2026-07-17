@@ -275,6 +275,7 @@ erDiagram
 3. `permissions` はシステム定義のグローバルカタログ（テナント非所有・RLS対象外・アプリからは読み取り専用）。**カスタムロール**は `roles`（テナント所有）＋ `role_permissions` の組み合わせで表現する（原則E②）。書き味重視ならここをJSONB化してもよい（ADR §9.1）。
 4. 認可コンテキストの導出: `ctx(user) = roles(user_roles) → permissions(role_permissions) ∪ allowed_reports(role_reports) ∪ scope_hash(normalize(∪ data_scope))`。この結果を③キャッシュに置く。SoR（本DB）と配信層（③）を混同しない。
 5. 秘密情報は置かない: `vendor_keys` は公開鍵のみ、`datasources.connection_ref` はSecret Manager参照のみ（GR-001）。
+6. **製品名を識別子に入れない**（COD-005・LOG-0030）: DBロール・データセット接頭辞・環境変数名などはすべて中立な名前（`app_runtime`, `t_<tenant_slug>` 等）。製品名はMarkdown散文とUI表示にのみ現れる＝改名はgrep置換1回で済む。
 
 ### 3.2 スキーマ定義（DDLドラフト）
 
@@ -422,7 +423,7 @@ create table revocation_events (      -- デニーリストKVへ流すSoR
 
 ```sql
 -- アプリ接続用ロール（マイグレーション用ownerとは分離する）
-create role chatchart_app login;      -- パスワードはSecret Manager側で設定
+create role app_runtime login;      -- パスワードはSecret Manager側で設定
 
 -- テナント所有の全表に同一形のポリシーを貼る
 do $$
@@ -443,7 +444,7 @@ end $$;
 ```
 
 - ゲート/MCPはリクエストごとに `set local app.tenant_id = '<検証済みJWT由来のUUID>'` を発行してからクエリする。**アプリ層がWHERE句を書き忘れても、RLSが他テナント行を返さない**——これが「保険」の意味。
-- `permissions` / `vendors` / `vendor_keys` はテナント境界の外（システム管理データ）なのでRLS対象外。`chatchart_app` には必要最小限のGRANTのみ（`audit_logs` はINSERTのみ等）。
+- `permissions` / `vendors` / `vendor_keys` はテナント境界の外（システム管理データ）なのでRLS対象外。`app_runtime` には必要最小限のGRANTのみ（`audit_logs` はINSERTのみ等）。
 
 ---
 
@@ -451,7 +452,7 @@ end $$;
 
 ```
 GCPプロジェクト: kotonoha-bi-dev（リネームせず維持）
-└─ データセット: cc_<tenant_slug>          ← テナント別データセット（第一候補）
+└─ データセット: t_<tenant_slug>          ← テナント別データセット（第一候補）
      ├─ <業務テーブル群>                    ← ホスト型の場合ここにロード
      └─ （または顧客既存BQへ接続 = connection_refで参照）
 ```
@@ -459,6 +460,16 @@ GCPプロジェクト: kotonoha-bi-dev（リネームせず維持）
 - テナント分離方式（**未確定・ADR §10-6**）: テナント別データセット vs 行アクセスポリシー vs authorized view。1サービスアカウント多テナント構成では行ポリシー運用がやや厄介で、**データセット分離が最も単純・堅牢な公算**。デザインパートナーのデータ形態を見て確定する。
 - 供給元（**未確定・ADR §10-7**）: ChatChartホスト型か、パートナー既存ウェアハウス接続か。どちらでも `datasources` 抽象（§3.2）で表現できる。
 - NL→SQLの実行先はここ。精度はspike済み（合成 12/12・実スキーマthelook 12/12、`spikes/nl2sql-*`）。
+
+### 4.1 「Parquet事前エクスポート→Evidenceビルド」パターンとの関係
+
+「中間処理でParquet/CSVをGCS/S3にエクスポートし、それをEvidenceのビルド時データソースとして読み込ませると高速」——これは**単一テナント/社内BIにおけるEvidenceの標準構成**であり、把握したうえで組み替えて採用している:
+
+- **ビルドに焼き込む形は採らない**（原則A）。マルチテナントでは (a) データ更新のたびに**テナント数ぶんのビルド**が必要（コスト・鮮度・ビルド時間が線形に悪化）、(b) テナントデータが静的アセットに入ると**配信面全体が越境面**になる。`spikes/evidence-dynamic` で実証済みのとおり、Evidenceのビルド出力にはプリレンダ結果Arrowとソース Parquet の2データチャネルが含まれ、テキストgrepでは見落としやすい形で機密が焼き込まれる。
+- **速さの取り方は同じ思想の分解**: シェル（①）は静的配信そのもの。データ側は「**テナント別に事前集計したParquet/ArrowをGCSに置き、認可ゲート経由で配信**」——これは②結果キャッシュの実装オプションのひとつで、まさにスパイクが検証した経路。固定レポートの閲覧はこれで賄える。
+- **実行時BigQueryが要るのはアドホックNL→SQLだけ**。固定レポート＝事前エクスポート（`data_version` 更新と自然に整合）、対話クエリ＝実行時実行、と使い分けられる。
+
+つまり「知らずに外した」のではなく、**認可・テナント分離要件と両立する形に分解して取り込んだ**のが現行設計。どちらの供給形態も `datasources` 抽象と②のキー設計（ADR §4/§5）の中で表現できる。
 
 ---
 

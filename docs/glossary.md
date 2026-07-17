@@ -37,6 +37,7 @@ alphabetical.
 
 | Term | Definition | Context | Avoid | Not to be confused with |
 |------|------------|---------|-------|--------------------------|
+| Product name | The user-facing brand label (currently "ChatChart"); display-only — never embedded in technical identifiers (COD-005) | product | — | stable technical IDs (repo slug, GCP project `kotonoha-bi-dev`), which are name-independent and survive a rename |
 
 ## Resolved ambiguities
 
