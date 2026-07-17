@@ -7,21 +7,32 @@ separation design (§4 of the ADR) rests on.
 
 ## What Evidence actually does (verified by dissecting a real build)
 
-Scaffolded the official template (`npx degit evidence-dev/template`), built it
-(`npm run sources && npm run build`), then inspected `build/` directly:
+> **Corrected 2026-07-17.** The first pass missed one channel; the request
+> log of a full page load (below) surfaced it. Both channels matter.
 
-- Each data source compiles to a **content-addressed Parquet file**:
-  `data/needful_things/orders/<hash>/orders.parquet`.
-- `data/manifest.json` maps source name → that Parquet path.
-- The page's SQL (`compiledQueryString`) **is** prerendered into the HTML —
-  but the query **results are not**. Grepping the built HTML for actual
-  values (category names, sales totals) found nothing; only the SQL text is
-  embedded. So for a page with no client-only inputs, the numbers still come
-  from a **runtime fetch** of the Parquet file, queried in-browser by
-  DuckDB-WASM.
-- Conclusion: **the shell (HTML/JS) and the data (Parquet, fetched by URL)
-  are already separate artifacts** in Evidence's own build output. This is
-  exactly the seam ADR-0005 needs.
+Scaffolded the official template (`npx degit evidence-dev/template`), built it
+(`npm run sources && npm run build`), inspected `build/`, and logged every
+request a real page load makes. A built Evidence site has **two data
+channels**, both fetched by URL at runtime, plus a data-free shell:
+
+1. **Prerendered query results** — `api/prerendered_queries/<hash>.arrow`.
+   At build time Evidence *executes* every page query and stores the result
+   as an Arrow IPC file, keyed per query (`all-queries.json` maps
+   `<query>_columns/_length/_data` → hash). **The initial render reads
+   these** — this is where the numbers a user first sees come from.
+   Being binary Arrow, they're invisible to text greps (the first pass
+   grepped for raw values, found nothing in HTML/JS, and wrongly concluded
+   results weren't prerendered anywhere).
+2. **Source Parquet** — `data/<source>/<hash>/orders.parquet`, mapped by
+   `data/manifest.json`. Fetched by the DuckDB-WASM **worker** (so it never
+   shows up in main-thread performance entries) to hydrate the in-browser
+   database for interactive re-queries — and, crucially, as the **fallback**
+   compute path when a prerendered result is unavailable.
+3. **The shell** (HTML/JS) carries the compiled SQL text but **zero data** —
+   byte-identical across tenants (verified with `cmp` and bundle hashes).
+
+So the seam ADR-0005 needs exists, but it is **two URLs wide, not one**:
+a per-tenant gate must handle *both* the `.arrow` results and the Parquet.
 
 ## Experiment: same URL, different tenant bytes, no rebuild
 
@@ -57,28 +68,53 @@ Also confirmed: the shell's HTML is byte-for-byte identical regardless of
 which tenant serves the data (`cmp` on both tenants' `/spike/` response —
 0 differences, and the JS bundle hash matched too).
 
-## What could NOT be confirmed here (tool limitation, not a product finding)
+## The "identical render" mystery — resolved (2026-07-17 follow-up)
 
-The remaining link — does Evidence's own client-side reactivity correctly
-**re-render** using freshly-fetched bytes on a plain page load — could not be
-observed through this session's sandboxed preview-browser tool. Two
-genuinely separate origins (`:8801` hardcoded to tenant A, `:8802` hardcoded
-to tenant B — no shared cookies/storage possible) rendered **identical**
-numbers in the tool's browser pane, even though `curl` against both origins
-proved the byte content differs. That contradiction — same page in two
-completely isolated origins showing identical output despite provably
-different server responses — points at a caching/snapshot layer inside the
-preview tool itself, not at Evidence or a real browser (which cannot share
-state across origins by construction).
+The first run of this spike hit a contradiction: two isolated origins
+(`:8801` = tenant A, `:8802` = tenant B) provably served different Parquet
+bytes, yet both rendered tenant A's numbers. The first writeup blamed a
+preview-tool caching artifact. **That interpretation was wrong** — the
+render was *correct behavior*: the displayed numbers never came from the
+Parquet at all. They came from channel 1, the prerendered
+`/api/prerendered_queries/*.arrow` results baked from tenant A's data at
+build time, which the gate was happily serving from the shared shell
+directory to both tenants. Swapping only the Parquet changes what
+*interactive* queries would compute — not what the page initially shows.
 
-**This is flagged, not swept under the rug — do not read the identical
-screenshots as "Evidence failed to update."** The HTTP-layer proof (§ above)
-is the load-bearing result; the rendering confirmation is a fast follow-up:
-open the same two `gate_fixed.mjs`-served URLs in a normal desktop browser
-(two tabs, `:8801` and `:8802`) and eyeball whether the bar chart differs.
-Low risk: re-fetching and re-rendering static-site data on a fresh page load
-is core, well-exercised Evidence functionality, not custom code this project
-would need to build.
+(Verified directly: `09511413….arrow`, mapped to `sales_by_category_data`,
+contains the tenant-A result rows; the per-request log shows the three
+`.arrow` fetches preceding the Parquet fetch on every load.)
+
+## Decisive experiment: per-tenant rendering, visually confirmed
+
+`gate_fixed.mjs` gained a `noprerender` mode that **404s
+`/api/prerendered_queries/*`** for that tenant, while still serving the
+tenant's Parquet. Result, confirmed by screenshot in a real browser pane:
+
+| Origin | Prerendered `.arrow` | Rendered chart+table |
+|---|---|---|
+| `:8801` tenant A | served (build default) | 4 categories, top **$157.9k** |
+| `:8802` tenant B | **404** → client falls back to DuckDB-WASM over tenant B's Parquet | 3 categories, top **$39.5k** — exactly tenant B's data |
+
+The request log corroborates: three `.arrow` requests → `[gate] 404ing…`
+→ Parquet fetched → page computes and renders tenant B's numbers.
+**Same shell build, different tenant data, no rebuild — visually proven.**
+
+Two production options fall out of this, both compatible with ADR-0005:
+
+- **Option 1 — 404-fallback (proven here):** gate serves tenant Parquet and
+  404s prerendered results. Simple; costs first-paint latency (DuckDB-WASM
+  init + compute before numbers appear) — the SLA-relevant tradeoff.
+- **Option 2 — per-tenant result generation (faster paint):** the gate (or a
+  worker behind it) executes the known compiled SQL against tenant data and
+  serves tenant-scoped `.arrow` under the same hash URLs. This is exactly
+  ADR-0005's "result cache" layer (`tenant_id:scope_hash:query_id:…`) —
+  Evidence's prerendered-queries mechanism *is* that layer's native seam.
+
+One more production note: Evidence registers a **data-caching service
+worker** (`fix-tprotocol-service-worker.js`). Both gates 404 it in these
+experiments; a multi-tenant deployment must disable it or make it
+tenant-aware, or it will serve one tenant's cached data to another.
 
 ## Reproduce
 
@@ -93,25 +129,33 @@ depend on them.
 cd app && npm install && npm run sources && npm run build   # builds ./build
 cd ..
 node gate.mjs app/build /data/ data/tenant_a data/tenant_b   # cookie/header-switched, one origin
-# or, to sidestep any client-side caching entirely:
-node gate_fixed.mjs 8801 app/build /data/ data/tenant_a      # tenant A, fixed
-node gate_fixed.mjs 8802 app/build /data/ data/tenant_b      # tenant B, fixed
+# or fixed-tenant origins; add `noprerender` to 404 the prerendered .arrow
+# results and force client-side compute from that tenant's Parquet:
+node gate_fixed.mjs 8801 app/build /data/ data/tenant_a               # tenant A, build default
+node gate_fixed.mjs 8802 app/build /data/ data/tenant_b noprerender   # tenant B, dynamic
 curl -H 'x-tenant: b' http://localhost:8799/data/needful_things/orders/<hash>/orders.parquet | wc -c
+# open http://localhost:8801/spike and http://localhost:8802/spike side by side
 ```
 
 ## Answer to the spike question
 
-**Yes — the dynamic-data seam is real.** Evidence's own build output already
-separates a tenant-agnostic shell from a Parquet file fetched by URL at
-runtime; an authorization gate can serve different tenant data through an
-identical URL with zero rebuild. ADR-0005's shell/data separation is
-implementable on top of Evidence as-is — no fork, no upstream patch needed.
+**Yes — the dynamic-data seam is real, and it is now visually proven
+end-to-end** (same shell build rendering different tenants' charts). The
+corrected model: Evidence's build output separates **three** artifacts —
+a data-free shell, per-query prerendered results (`.arrow`), and source
+Parquet — all addressed by URL. A gate that controls the two data channels
+fully controls what each tenant sees, with zero rebuild, no fork, no
+upstream patch. The initially-planned "swap the Parquet" alone is **not
+sufficient** — the prerendered-results channel is the one users see first,
+and it maps 1:1 onto ADR-0005's result-cache layer.
 
 Follow-ups before Phase 1 build starts:
-- Confirm client-side re-render in a real desktop browser (see above).
-- Design the actual gate's cache-key scheme (§ADR-0005 `scope_hash` /
-  `data_version`) against this now-confirmed URL-interception mechanism.
-- Decide how per-tenant Parquet gets produced at runtime (today: `evidence
-  sources` at build time per-source; production needs an on-write pipeline
-  that regenerates the tenant's Parquet on data change — this spike proved
-  the *serving* side, not the *generation* side).
+- Choose Option 1 (404-fallback; simple, slower first paint) vs Option 2
+  (per-tenant `.arrow` generation; fast paint, exactly ADR-0005's result
+  cache) — measure first-paint latency of Option 1 to decide.
+- Design the gate's cache-key scheme (`scope_hash` / `data_version`)
+  against these two now-characterized URL channels.
+- Decide how per-tenant Parquet (and, for Option 2, `.arrow` results) get
+  produced on data change — this spike proved the *serving* side, not the
+  *generation* side.
+- Disable or tenant-scope Evidence's data-caching service worker.

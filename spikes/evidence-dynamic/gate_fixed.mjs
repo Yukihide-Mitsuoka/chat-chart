@@ -1,13 +1,19 @@
 import http from "node:http";
 import { readFile, stat } from "node:fs/promises";
 import { extname, join, normalize } from "node:path";
-const [port, buildDir, dataPrefix, tenantDir] = process.argv.slice(2);
+const [port, buildDir, dataPrefix, tenantDir, mode] = process.argv.slice(2);
+const NO_PRERENDER = mode === "noprerender";
 const MIME = {".html":"text/html",".js":"text/javascript",".mjs":"text/javascript",".css":"text/css",
   ".json":"application/json",".parquet":"application/octet-stream",".wasm":"application/wasm",
   ".svg":"image/svg+xml",".map":"application/json",".woff2":"font/woff2",".txt":"text/plain"};
 function safeJoin(root, p){const n=normalize(decodeURIComponent(p)).replace(/^(\.\.[/\\])+/,"");const f=join(root,n);return f.startsWith(normalize(root))?f:null;}
 const server = http.createServer(async (req,res)=>{
   const urlPath = req.url.split("?")[0];
+  console.log(`[req] ${req.method} ${urlPath}`);
+  if (NO_PRERENDER && urlPath.startsWith("/api/prerendered_queries/")) {
+    console.log(`[gate] 404ing prerendered result: ${urlPath}`);
+    res.writeHead(404); return res.end("prerendered results disabled per-tenant");
+  }
   if (dataPrefix!=="-"&&urlPath.startsWith(dataPrefix)){
     const rel = urlPath.slice(dataPrefix.length);
     const file = safeJoin(tenantDir, rel);
