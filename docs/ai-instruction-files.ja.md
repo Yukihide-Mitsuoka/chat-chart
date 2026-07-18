@@ -190,7 +190,7 @@ updated: 2026-07-07
 - **利用目的**：長期的影響のある決定を不変記録。受理された ADR は規範（GR-022）。
 - **利用シーン**：構造/境界/技術の変更前に「既に決まってないか」確認し、新決定は ADR を起票。
 - **利用しないシーン**：局所的な実装判断（それは decision-log の1行や why コメントで足りる）。
-- **利用例**：[0002](adr/0002-ai-facing-docs-in-english.md)「AI向け文書は英語」を読み、なぜ英語かを理解。新規は [0000-template.md](adr/0000-template.md) を複製。
+- **利用例**：[基盤ADR-0002](foundation/adr/0002-ai-facing-docs-in-english.md)を読み、文書言語規則の変遷を理解。新規は [基盤のADRテンプレート](foundation/templates/adr.md) を使用。
 
 ### [docs/glossary.md](glossary.md)（統一用語）
 

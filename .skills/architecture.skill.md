@@ -23,7 +23,7 @@ human, then implemented incrementally.
    critical unknown blocks comparison (timebox it).
 3. Compare options against: simplicity, blast radius (ARC-020), reversibility,
    operational cost, security posture (GR-030), vendor lock-in.
-4. Draft the ADR from `docs/adr/0000-template.md`: context, decision, consequences
+4. Draft the ADR from `docs/foundation/templates/adr.md`: context, decision, consequences
    (including negative ones — an ADR without downsides is not credible).
 5. Open the ADR as its own PR (or the first commit of the change PR). **Human approval
    of the ADR is the gate** (GR-022) — do not implement past it.

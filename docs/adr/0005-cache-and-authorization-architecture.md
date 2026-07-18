@@ -13,7 +13,7 @@
   owner decision (2026-07-16): keep this ADR in Japanese for now as an early-stage
   product-discovery record; translate to English before this moves past "proposed"
   toward formal AI-agent-facing status. Not yet reshaped into the Context / Options
-  considered / Decision / Consequences structure from docs/adr/0000-template.md either
+  considered / Decision / Consequences structure from docs/foundation/templates/adr.md either
   — same deferred-cleanup follow-up.
 -->
 
