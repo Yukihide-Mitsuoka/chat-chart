@@ -46,7 +46,7 @@ direct, decide, and review.
    Run the agent inside the [Dev Container](.devcontainer/README.md) so host credentials
    stay out of its reach; customize `.devcontainer/devcontainer.json` for your stack.
 
-Full walkthrough (new machine, different account, gotchas): [docs/usage.md](docs/usage.md).
+Full walkthrough (new machine, different account, gotchas): [foundation usage guide](docs/foundation/guides/usage.md).
 
 ## Design principles
 
