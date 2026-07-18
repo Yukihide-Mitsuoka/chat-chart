@@ -25,10 +25,22 @@ jobs:
       pull-requests: write
     steps:
       - uses: actions/checkout@v6
+      - name: Resolve full foundation source commit
+        id: foundation-source
+        shell: bash
+        run: |
+          set -euo pipefail
+          read -r source_sha _ <<< "$(git ls-remote https://github.com/Yukihide-Mitsuoka/ai-dev-foundation.git refs/heads/main)"
+          if [[ ! "$source_sha" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "Unable to resolve the full ai-dev-foundation main commit" >&2
+            exit 1
+          fi
+          echo "sha=$source_sha" >> "$GITHUB_OUTPUT"
       - uses: AndreasAugustin/actions-template-sync@v2
         with:
           source_repo_path: "Yukihide-Mitsuoka/ai-dev-foundation"
           upstream_branch: main
           pr_title: "build: sync with ai-dev-foundation template"
+          pr_body: "Foundation-source: https://github.com/Yukihide-Mitsuoka/ai-dev-foundation@${{ steps.foundation-source.outputs.sha }}"
           pr_labels: "type:ci,type:dependencies"
           pr_commit_msg: "build: sync with ai-dev-foundation template"

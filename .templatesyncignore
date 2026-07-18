@@ -38,8 +38,8 @@ CLAUDE.md
 Makefile
 README.md
 docs/**
-!docs/foundation/
-!docs/foundation/**
+:!docs/foundation/
+:!docs/foundation/**
 profiles/**
 spikes/**
 src/**

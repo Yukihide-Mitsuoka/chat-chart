@@ -18,8 +18,8 @@ expect_rule() {
 
 expect_rule '.github/workflows/**'
 expect_rule 'docs/**'
-expect_rule '!docs/foundation/'
-expect_rule '!docs/foundation/**'
+expect_rule ':!docs/foundation/'
+expect_rule ':!docs/foundation/**'
 
 echo "template-sync-boundary.test.sh: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]
