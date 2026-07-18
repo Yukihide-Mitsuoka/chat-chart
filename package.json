@@ -1,0 +1,18 @@
+{
+  "name": "app",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "dev": "echo 'nothing runnable yet — the gate Workers adapter PR adds a dev server' && exit 1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.1",
+    "prettier": "^3.6.0",
+    "typescript": "^5.8.0"
+  }
+}
