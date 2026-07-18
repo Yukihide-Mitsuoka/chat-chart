@@ -1,0 +1,10 @@
+# Prettier owns only the product source (src/, tests/) and root JSON configs.
+# Docs/spikes/templates keep their existing formatting; mdformat (pre-commit)
+# owns Markdown.
+/*
+!/src/
+!/tests/
+!/package.json
+!/tsconfig.json
+!/.prettierrc.json
+*.md
