@@ -49,3 +49,11 @@ test('project governance references use the foundation ADR namespace', async () 
   assert.match(architectureSkill, /docs\/foundation\/templates\/adr\.md/u);
   assert.doesNotMatch(projectAdr0005, /docs\/adr\/0000-template\.md/u);
 });
+
+test('project glossary is Japanese and delegates foundation terms', async () => {
+  const glossary = await readFile(`${repositoryRoot}/docs/glossary.md`, 'utf8');
+
+  assert.match(glossary, /^# プロジェクト用語集$/mu);
+  assert.match(glossary, /\]\(foundation\/glossary\.md\)/u);
+  assert.doesNotMatch(glossary, /^\| ADR \|/mu);
+});

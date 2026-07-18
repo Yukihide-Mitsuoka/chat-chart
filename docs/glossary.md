@@ -1,53 +1,26 @@
 ---
-id: glossary
-title: Glossary — Ubiquitous Language
-updated: 2026-07-16
+id: project-glossary
+title: プロジェクト用語集
+updated: 2026-07-19
 ---
 
-# Glossary
+# プロジェクト用語集
 
-The ubiquitous language (DDD). Code identifiers, docs, and conversation MUST use these
-terms with exactly these meanings (COD-002). Before naming a new concept, check here;
-when introducing a term, add it here in the same PR (DOC-030).
+ChatChart固有のユビキタス言語を定義します。コード識別子、文書、会話では、
+ここに記載した用語を同じ意味で使用します（COD-002）。新しい概念に名前を付ける前に
+この用語集を確認し、新語は同じPRで追加します（DOC-030）。
 
-Format: term, one-sentence definition, context it belongs to, banned synonyms (*Avoid* —
-never use these for the concept; COD-002), and what it is NOT when confusable. Keep
-alphabetical.
+基盤共通の用語は[基盤用語集](foundation/glossary.md)を参照し、ここには複製しません。
 
-## Template & foundation terms
+## 用語
 
-| Term | Definition | Context | Avoid | Not to be confused with |
-|------|------------|---------|-------|--------------------------|
-| ADR | Immutable record of an architectural decision in `docs/adr/` | foundation | design doc | decision log (the index of all decisions) |
-| Agent | Any AI system working in this repo under CLAUDE.md rules | foundation | bot, assistant | — |
-| Audit | Read-only governance comparison whose exit code fails on drift or unknown state | governance | check | plan (which reports those states without failing) |
-| Bounded context | A domain boundary owning its model and language; maps 1:1 to `src/modules/<context>` | DDD | — | module (the code artifact implementing it) |
-| Canonical command | A `make` target that is the only entry point for a dev action | foundation | — | — |
-| Contract change | A change to a MODULE.md public API or event (ARC-020) | foundation | — | breaking change (a contract change affecting *external* consumers) |
-| Drift | A known difference between resolved governance policy and live GitHub state | governance | mismatch | unknown (state that could not be evaluated) |
-| Guardrail | An absolute prohibition (GR-xxx) that no instruction can override | foundation | — | rule (overridable with justification if SHOULD-level) |
-| Module | A directory under `src/modules/` implementing one bounded context | foundation | component, service | package/library |
-| Plan | Read-only governance comparison that reports drift or unknown state without failing on it | governance | preview | audit (which exposes those states through its exit code) |
-| Skill | A task playbook in `.skills/*.skill.md` | foundation | — | Claude Code native skill (optional wrapper) |
-| Unknown | A governance control that could not be evaluated because required state was not visible | governance | indeterminate | compliant or drift |
+| 用語 | 定義 | 文脈 | 避ける表現 | 区別する対象 |
+|------|------|------|------------|--------------|
+| 製品名 | 利用者向けの表示名。現時点では「ChatChart」だが、技術識別子には埋め込まない（COD-005） | 製品 | — | リポジトリslugやGCPプロジェクト `kotonoha-bi-dev` など、改名後も維持する技術識別子 |
 
-## Project terms
+## 解決済みの曖昧さ
 
-<!-- TEMPLATE: add your domain's terms here as the first bounded context is modeled. -->
+同じ語が複数の意味を持つ場合や、複数の語が同じ概念を指す場合は、解決内容を追記します。
+採用した用語は上の表にも反映します。
 
-| Term | Definition | Context | Avoid | Not to be confused with |
-|------|------------|---------|-------|--------------------------|
-| Product name | The user-facing brand label (currently "ChatChart"); display-only — never embedded in technical identifiers (COD-005) | product | — | stable technical IDs (repo slug, GCP project `kotonoha-bi-dev`), which are name-independent and survive a rename |
-
-## Resolved ambiguities
-
-Append-only log of naming collisions and their resolution — one word carrying two
-meanings, or two words carrying one meaning. Recording the resolution keeps the
-collision from returning; move the surviving term into the tables above.
-
-<!-- TEMPLATE: example entry —
-- "handler" meant both HTTP controllers and event consumers; resolved 2026-07-10:
-  HTTP side is "controller", event side is "consumer". "handler" is no longer used.
--->
-
-*None yet.*
+現時点ではありません。
