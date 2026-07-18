@@ -27,5 +27,7 @@ architectural change (definition: ARC-020 "Architectural" scope). Process:
 | [0003](0003-reconcile-github-governance-from-inherited-policy.md) | Reconcile GitHub governance from inherited policy | accepted | 2026-07-15 |
 | [0004](0004-harden-multi-level-template-inheritance.md) | Harden multi-level template inheritance | accepted | 2026-07-16 |
 | [0005](0005-cache-and-authorization-architecture.md) | Dynamic rendering with layered cache and hybrid claim+revocation authorization | proposed | 2026-07-16 |
+| [0006](0006-edge-gate-runtime-cloudflare-workers.md) | Edge authorization gate runtime uses Cloudflare Workers | proposed | 2026-07-18 |
+| [0007](0007-use-one-time-protected-legacy-template-sync.md) | 保護された旧Template Syncを一度だけ使用する | accepted | 2026-07-18 |
 
 <!-- Append new ADRs to this table (newest last). -->
