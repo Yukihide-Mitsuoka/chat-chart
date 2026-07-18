@@ -1,5 +1,5 @@
 # CODEOWNERS — review routing. Later rules win.
-# Personal account: all review routes to the owner (docs/usage.md step 3).
+# Personal account: all review routes to the owner (docs/foundation/guides/usage.md step 3).
 
 # Default: everything needs a maintainer review
 *                       @Yukihide-Mitsuoka

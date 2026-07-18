@@ -38,6 +38,7 @@ test('foundation docs are not duplicated in the project namespace', async () => 
 
 test('project governance references use the foundation ADR namespace', async () => {
   const decisionLog = await readFile(`${repositoryRoot}/.ai/decision-log.md`, 'utf8');
+  const codeowners = await readFile(`${repositoryRoot}/.github/CODEOWNERS`, 'utf8');
   const architectureSkill = await readFile(
     `${repositoryRoot}/.skills/architecture.skill.md`,
     'utf8',
@@ -48,6 +49,8 @@ test('project governance references use the foundation ADR namespace', async () 
   );
 
   assert.doesNotMatch(decisionLog, /\.\.\/docs\/adr\/000[1-4]-/u);
+  assert.match(codeowners, /docs\/foundation\/guides\/usage\.md/u);
+  assert.doesNotMatch(codeowners, /docs\/usage\.md/u);
   assert.match(architectureSkill, /docs\/foundation\/templates\/adr\.md/u);
   assert.doesNotMatch(projectAdr0005, /docs\/adr\/0000-template\.md/u);
 });
