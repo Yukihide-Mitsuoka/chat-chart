@@ -19,7 +19,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # TEMPLATE: add your runtime setup action here (setup-node / setup-python / setup-go)
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
       - run: make setup
       - run: make lint
 
@@ -27,6 +30,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
       - run: make setup
       - run: make coverage
       - name: Upload coverage artifact
@@ -40,6 +47,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
       - run: make setup
       - run: make build
 
