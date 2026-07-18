@@ -13,9 +13,9 @@ an ADR justifies it.
 
 | Field | Value |
 |-------|-------|
-| Language / runtime | TypeScript/Node 18+ (Evidence rendering core, edge authorization gate, MCP server) + Python 3.13 (NL→SQL pipeline, data tooling — current spikes). Phase 1 not started; see `docs/requirements.md` §2 |
-| Persistence | PostgreSQL with Row Level Security mandatory (Neon planned); DuckDB/Parquet as the per-tenant rendering data layer; Edge KV for result/authz caches (ADR-0005) |
-| Deployment target | Edge (Cloudflare Workers / Vercel) + CDN for the shell; LLM via Vertex AI (Gemini 3.5 Flash default, Opus 4.8 fallback — LOG-0022) |
+| Language / runtime | TypeScript/Node 24 (edge authorization gate — Phase 1 in progress under `src/modules/gate`; Evidence rendering core + MCP server planned) + Python 3.13 (NL→SQL pipeline, data tooling — spikes). See `docs/requirements.md` §2 |
+| Persistence | PostgreSQL with Row Level Security mandatory (Neon planned); BigQuery per-tenant datasets for analytics data; Workers KV for the result/authz/denylist caches and Cache API for the shell (ADR-0005 §3, ADR-0006) |
+| Deployment target | Cloudflare Workers for the edge gate (ADR-0006 — decided) + CDN for the shell; LLM via Vertex AI (Gemini 3.5 Flash default, Opus 4.8 fallback — LOG-0022) |
 | Architecture docs | `docs/architecture/` |
 
 ## ARC-001: Canonical directory layout

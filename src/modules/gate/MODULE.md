@@ -19,6 +19,7 @@ write side), query execution (MCP gateway), or report authoring.
 | `GateService.requestShell` | application | Serve the tenant-agnostic shell for a report (① cache, `report_id:report_version` key) |
 | `GateService.requestData` | application | Serve a query result (② cache, ADR-0005 §4 key; miss → `QueryExecutor` with single-flight) |
 | `ports.ts` interfaces | application | What adapters must implement (verifier, control-plane reader, KV stores, executor, hasher, audit, clock) |
+| `worker.ts` default export | interface | Cloudflare Workers `fetch` entry (ADR-0006); routes `GET /r/{report}` (①) and `GET /r/{report}/data/{query}` (②), maps denials to generic client messages |
 
 ## Events
 
@@ -49,4 +50,4 @@ and writes only caches (①②③, denylist), all reconstructible.
 
 | Uses module | Via | Why |
 |-------------|-----|-----|
-| (none yet) | — | Control plane and MCP are ports until their modules exist; adapters: in-memory (tests, ARC-005 second adapter) and Cloudflare Workers (ADR-0006, next PR) |
+| (none yet) | — | Control plane and MCP are ports until their modules exist. Adapters shipped: WebCrypto + Workers KV (production, ADR-0006) and in-memory (tests, ARC-005 second adapter). `worker.ts` wires the real edge adapters but seeds an **in-memory control-plane + executor bootstrap** (marked `SEAM`) so `wrangler dev` runs today; replacing those two with the Postgres/MCP adapters is the remaining wiring |

@@ -1,0 +1,38 @@
+# Cloudflare Workers config for the edge authorization gate (ADR-0006).
+# Worker name is neutral, never the product name (COD-005).
+name = "gate"
+main = "src/modules/gate/interface/worker.ts"
+compatibility_date = "2026-07-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Four KV namespaces back the cache layers (ADR-0005 §3): ② result, ③ authz,
+# denylist, ① shell. Create them once with:
+#   npx wrangler kv namespace create RESULT_KV
+#   npx wrangler kv namespace create AUTHZ_KV
+#   npx wrangler kv namespace create DENYLIST_KV
+#   npx wrangler kv namespace create SHELL_KV
+# then paste each returned id below. `wrangler dev` uses a local simulator, so
+# the placeholder ids are fine for local runs; real ids are needed to deploy.
+[[kv_namespaces]]
+binding = "RESULT_KV"
+id = "REPLACE_WITH_RESULT_KV_ID"
+
+[[kv_namespaces]]
+binding = "AUTHZ_KV"
+id = "REPLACE_WITH_AUTHZ_KV_ID"
+
+[[kv_namespaces]]
+binding = "DENYLIST_KV"
+id = "REPLACE_WITH_DENYLIST_KV_ID"
+
+[[kv_namespaces]]
+binding = "SHELL_KV"
+id = "REPLACE_WITH_SHELL_KV_ID"
+
+[vars]
+GATE_AUDIENCE = "gate"
+# VENDOR_KEYS is the JSON map { "<kid>": <public-JWK> } of vendor JWT-signing
+# public keys. Public keys are not secrets (GR-001), but set it per environment:
+#   npx wrangler secret put VENDOR_KEYS   # or a [vars] entry for local dev
+# In production this is sourced from the control-plane `vendor_keys` table.
+VENDOR_KEYS = "{}"
