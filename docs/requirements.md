@@ -6,12 +6,11 @@ updated: 2026-07-16
 ---
 
 <!--
-  Note (repo governance): ADR-0002 mandates English for docs/. This instance file is in
-  Japanese per the explicit exception in docs/templates/requirements.md ("Fill instances
-  in the project's working language"). It also does not yet follow the FR-/NFR-/AC- ID
-  schema in that template — this is pre-formal, exploratory content from early product
-  discovery, not yet a fully specified requirements doc. See docs/discovery-log.md for
-  the session narrative and open questions behind these decisions.
+  Note (repo governance): project-owned docs are written in Japanese under the current
+  foundation convention. This document predates the FR-/NFR-/AC- ID schema in
+  docs/foundation/templates/requirements.md and remains an exploratory requirements
+  record. See docs/discovery-log.md for the session narrative and open questions behind
+  these decisions.
 -->
 
 # 【要件定義書 v1】ChatChart — マルチテナント型 AI-BI SaaS（Evidence × MCP）

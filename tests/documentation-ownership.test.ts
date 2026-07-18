@@ -27,6 +27,8 @@ test('foundation docs are not duplicated in the project namespace', async () => 
     '../troubleshooting/README.md',
     '../troubleshooting/github-governance.md',
     '../troubleshooting/template-inheritance.md',
+    '../templates/README.md',
+    '../templates/requirements.md',
   ];
 
   for (const name of legacyCopies) {
@@ -56,4 +58,14 @@ test('project glossary is Japanese and delegates foundation terms', async () => 
   assert.match(glossary, /^# プロジェクト用語集$/mu);
   assert.match(glossary, /\]\(foundation\/glossary\.md\)/u);
   assert.doesNotMatch(glossary, /^\| ADR \|/mu);
+});
+
+test('project roadmap and requirements use the project documentation convention', async () => {
+  const roadmap = await readFile(`${repositoryRoot}/docs/roadmap.md`, 'utf8');
+  const requirements = await readFile(`${repositoryRoot}/docs/requirements.md`, 'utf8');
+
+  assert.match(roadmap, /^# プロジェクトロードマップ$/mu);
+  assert.doesNotMatch(roadmap, /<!-- TEMPLATE:/u);
+  assert.match(requirements, /docs\/foundation\/templates\/requirements\.md/u);
+  assert.doesNotMatch(requirements, /docs\/templates\/requirements\.md/u);
 });

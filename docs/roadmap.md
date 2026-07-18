@@ -1,32 +1,45 @@
 ---
-id: roadmap
-title: Roadmap
-updated: 2026-07-02
+id: project-roadmap
+title: プロジェクトロードマップ
+updated: 2026-07-19
 ---
 
-# Roadmap
+# プロジェクトロードマップ
 
-Direction and sequencing. Agents use this to judge whether a proposed change aligns
-with where the project is going (mission.md success criteria) — not as a work queue
-(that's GitHub issues/milestones).
+ChatChartの開発方向と実施順序を示します。詳細なスコープと受入条件は
+[要件定義書](requirements.md)、個々の作業はGitHub issueを正本とします。
+この文書は作業一覧ではなく、先行実装や過剰設計を防ぐための優先順位です。
 
-**Update triggers:** milestone completed, priorities re-ordered, scope added/dropped.
-Keep `updated:` current; stale roadmaps mislead agents (DOC-040).
+更新契機は、フェーズ完了、優先順位変更、スコープ追加・削除です（DOC-040）。
 
-## Now (current milestone)
+## 現在：Phase 1の実環境検証と設計確定
 
-<!-- TEMPLATE: 1-3 outcomes being pursued right now, each linking a GitHub milestone.
-- Outcome: ... (milestone: ...)  -->
+- Cloudflare WorkersとWorkers KV上で認可ゲートを動作させ、インプロセスで通過した
+  [ADR-0005の受入条件](adr/0005-cache-and-authorization-architecture.md)を実環境でも満たす。
+- BigQueryを分析データソースとする1本の経路を接続し、テナントID強制注入、
+  データソース側隔離、認可付きキャッシュを一体で検証する。
+- ADR-0005とADR-0006の未決事項を実測で解消し、人の承認を得てPhase 1実装の境界を確定する。
+- デザインパートナー候補1社との検証に必要なセキュリティ説明、監査ログ、
+  撤退時データ削除の要件を具体化する。
 
-## Next (1-2 milestones out)
+## 次：デザインパートナー1社でのPhase 1本番運用
 
-<!-- Committed direction, not yet started. -->
+- マルチテナント認証、固定2〜3段ロール、監査ログを含む最小構成を完成させる。
+- NL→SQL、検証、描画、問い返しを実データで接続し、精度と運用原価を測定する。
+- 手動オンボーディングと月額固定の請求で1社を支え、事例化できる状態にする。
+- 本番実測から性能、可用性、セキュリティの基準値を更新する。
 
-## Later (intended, not committed)
+## 将来：実測で必要になった場合のみ
 
-<!-- Direction only. Agents MUST NOT build ahead for "Later" items (COD-051). -->
+- 3〜5社の手動運用が限界に達した時点で、テナント作成やデータソース接続を自動化する。
+- 顧客要件が固定ロールを超えた場合に、カスタムロールを導入する。
+- データ量がボトルネックになった場合に、部分再生成とキャッシュ失効を最適化する。
+- 事例と売上が成立した後に、pentest、SOC 2準備、SLA商品化を検討する。
 
-## Explicitly not planned
+## 明示的に計画しないもの
 
-<!-- Rejected scope, with the reason or ADR link — prevents agents and contributors
-     from re-proposing settled questions. -->
+- Stripeメーター課金とリアルタイム無料枠計算。少数社の月額固定・請求書払いを優先する。
+- 手動運用で足りる期間のセルフサーブ機能。作る前に運用上の限界を確認する。
+- 初期段階での全BYODB対応、リアルタイムストリーミング、モバイルアプリ、
+  完全なホワイトラベル対応。
+- 「将来必要かもしれない」ことだけを理由にした先行実装（COD-051）。
