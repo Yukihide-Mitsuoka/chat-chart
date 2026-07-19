@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.0](https://github.com/Yukihide-Mitsuoka/chat-chart/compare/v1.0.0...v1.1.0) (2026-07-19)
+
+
+### Features
+
+* **executor:** AST-level tenant-boundary binding for SQL queries ([#56](https://github.com/Yukihide-Mitsuoka/chat-chart/issues/56)) ([6ad2547](https://github.com/Yukihide-Mitsuoka/chat-chart/commit/6ad25471525af449083948bd627fee66026ae554)), closes [#55](https://github.com/Yukihide-Mitsuoka/chat-chart/issues/55)
+* **executor:** execute use case with binding resolution and audit ([#58](https://github.com/Yukihide-Mitsuoka/chat-chart/issues/58)) ([a0435b7](https://github.com/Yukihide-Mitsuoka/chat-chart/commit/a0435b78433c11812fad3b40573a0e4d52ef4a2f)), closes [#55](https://github.com/Yukihide-Mitsuoka/chat-chart/issues/55)
+
 ## 1.0.0 (2026-07-19)
 
 
