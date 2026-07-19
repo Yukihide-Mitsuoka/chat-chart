@@ -17,12 +17,16 @@ definitions, or NL→SQL generation.
 | Entry point | Layer | Description |
 |-------------|-------|-------------|
 | `bindQuery(sql, binding, policy)` | domain | Validate a query and rewrite it so every physical table is bound to the tenant's dataset and every row-scoped table is wrapped in its scope filter. Returns `BoundQuery` or a typed `Rejection` |
+| `ExecuteQuery.execute(tenantId, sql, params)` | application | Resolve the tenant's binding, bind the SQL, run it, audit what actually ran. Refusals never reach the runner |
+| `ports.ts` interfaces | application | What adapters must implement (`QueryRunner`, `BindingResolver`, `AuditSink`) |
 
 ## Events
 
 | Direction | Event | Schema | Notes |
 |-----------|-------|--------|-------|
-| (none yet) | — | — | the execute use case will publish `query.execute` audit records |
+| publishes | `query.execute` | `AuditSink` port | on success; carries the **bound** SQL and the tables touched |
+| publishes | `query.refused` | `AuditSink` port | on a binder rejection, with the rejection code |
+| publishes | `query.failed` | `AuditSink` port | on a runner error; the driver message stays audit-side |
 
 ## Owned data
 
@@ -44,12 +48,20 @@ reads the tenant's analytics dataset.
    the caller's dataset; a walker gap therefore yields `rewrite-failed`, never a leak.
 7. Identifiers and scope values emitted into SQL text are charset-validated; anything
    else is refused.
+8. Nothing reaches the `QueryRunner` that has not been through `bindQuery` — a refusal
+   short-circuits before execution.
+9. The binding is resolved from a server-supplied `tenantId`; a resolver returning a
+   binding for a different tenant is refused rather than followed.
+10. Query parameters are passed to the runner as parameters, never interpolated into the
+    SQL text.
+11. An audit-sink failure never fails an otherwise successful query, and never masks a
+    refusal.
 
 ## Dependencies
 
 | Uses module | Via | Why |
 |-------------|-----|-----|
-| (none) | — | Consumed by `gate` through its `QueryExecutor` port once the execute use case and BigQuery adapter land (#55) |
+| (none) | — | Adapters shipped: in-memory (tests, ARC-005 second adapter). Pending: the BigQuery `QueryRunner`, and wiring into `gate`'s `QueryExecutor` port (#55). `BindingResolver` is served by the control-plane module once it exists |
 
 External: `node-sql-parser` (Apache-2.0) for BigQuery-dialect parse/serialize — see the
 COD-040 justification in the PR that introduced it.
