@@ -1,0 +1,20 @@
+# Changelog
+
+## 1.0.0 (2026-07-19)
+
+
+### Features
+
+* **gate:** Cloudflare Workers interface — KV adapter, fetch handler, entry ([01848c8](https://github.com/Yukihide-Mitsuoka/chat-chart/commit/01848c800a9103cad9cbc997045cd01bc7b6409c))
+* **gate:** Cloudflare Workers interface — KV adapter, fetch handler, entry ([8a2daf5](https://github.com/Yukihide-Mitsuoka/chat-chart/commit/8a2daf5acdb07b2c74f0ddbd331fdff7f16218d3)), closes [#23](https://github.com/Yukihide-Mitsuoka/chat-chart/issues/23)
+* **gate:** in-memory + WebCrypto adapters and the ported acceptance suite ([39af2f6](https://github.com/Yukihide-Mitsuoka/chat-chart/commit/39af2f6969bc64eab6eed42abdc810025eeca5cc))
+* **gate:** in-memory + WebCrypto adapters and the ported acceptance suite ([04a0550](https://github.com/Yukihide-Mitsuoka/chat-chart/commit/04a05500e70a63bee798fbcebbc891faf8ea8029)), closes [#23](https://github.com/Yukihide-Mitsuoka/chat-chart/issues/23)
+* **gate:** runtime-agnostic gate core — domain + application layers ([28669c6](https://github.com/Yukihide-Mitsuoka/chat-chart/commit/28669c65cbbaa4416827c351277bbf579ba32bcc))
+* **gate:** runtime-agnostic gate core — domain + application layers ([e6b34cd](https://github.com/Yukihide-Mitsuoka/chat-chart/commit/e6b34cdc74382339c5776693c75f9f8e4dfc834a)), closes [#23](https://github.com/Yukihide-Mitsuoka/chat-chart/issues/23)
+
+
+### Bug Fixes
+
+* satisfy CI — untrack package-lock.json, fix broken settings link ([70675fd](https://github.com/Yukihide-Mitsuoka/chat-chart/commit/70675fd5a42799d9505b2c03d9d428703548ceb8))
+* **sync:** authenticate foundation documentation propagation ([#38](https://github.com/Yukihide-Mitsuoka/chat-chart/issues/38)) ([3eba6c7](https://github.com/Yukihide-Mitsuoka/chat-chart/commit/3eba6c70d59857ece4d79d5a5c493aab7e335140))
+* **template-sync:** protect downstream workflow ownership ([#31](https://github.com/Yukihide-Mitsuoka/chat-chart/issues/31)) ([f14e1ab](https://github.com/Yukihide-Mitsuoka/chat-chart/commit/f14e1aba739cb9660ec5bbd364d8611884f1d29a))
