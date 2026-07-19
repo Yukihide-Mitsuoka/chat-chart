@@ -16,6 +16,7 @@
     "typescript": "^5.8.0"
   },
   "dependencies": {
+    "google-auth-library": "^10.9.0",
     "node-sql-parser": "^5.4.0"
   }
 }

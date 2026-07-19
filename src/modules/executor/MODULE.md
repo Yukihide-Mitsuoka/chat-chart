@@ -56,12 +56,14 @@ reads the tenant's analytics dataset.
     SQL text.
 11. An audit-sink failure never fails an otherwise successful query, and never masks a
     refusal.
+12. The BigQuery runner never returns a partial answer as if it were complete: an
+    incomplete job or a paged result is an error, not truncated rows.
 
 ## Dependencies
 
 | Uses module | Via | Why |
 |-------------|-----|-----|
-| (none) | — | Adapters shipped: in-memory (tests, ARC-005 second adapter). Pending: the BigQuery `QueryRunner`, and wiring into `gate`'s `QueryExecutor` port (#55). `BindingResolver` is served by the control-plane module once it exists |
+| (none) | — | Adapters shipped: BigQuery `QueryRunner` (REST `jobs.query` + ADC) and in-memory (tests, ARC-005 second adapter). Pending: wiring into `gate`'s `QueryExecutor` port (#55). `BindingResolver` is served by the control-plane module once it exists |
 
 External: `node-sql-parser` (Apache-2.0) for BigQuery-dialect parse/serialize — see the
 COD-040 justification in the PR that introduced it.
