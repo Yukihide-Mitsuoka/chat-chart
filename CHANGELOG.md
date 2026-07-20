@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/Yukihide-Mitsuoka/chat-chart/compare/v1.1.0...v1.2.0) (2026-07-20)
+
+
+### Features
+
+* **executor:** BigQuery query runner over the REST jobs.query endpoint ([#59](https://github.com/Yukihide-Mitsuoka/chat-chart/issues/59)) ([01f50b5](https://github.com/Yukihide-Mitsuoka/chat-chart/commit/01f50b564ee36ed868ecb89f5e0426fabaf66cbc)), closes [#55](https://github.com/Yukihide-Mitsuoka/chat-chart/issues/55)
+
 ## [1.1.0](https://github.com/Yukihide-Mitsuoka/chat-chart/compare/v1.0.0...v1.1.0) (2026-07-19)
 
 
