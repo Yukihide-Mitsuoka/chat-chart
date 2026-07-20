@@ -113,7 +113,12 @@ test('a runner failure surfaces as 500 and is audited, without leaking the drive
 
 test('a successful run audits the bound SQL and the tables it touched', async () => {
   const { exec, audit } = harness();
-  await exec.execute('t_alpha', 'SELECT c.name FROM orders o JOIN categories c ON o.cat = c.id', {}, ALL);
+  await exec.execute(
+    't_alpha',
+    'SELECT c.name FROM orders o JOIN categories c ON o.cat = c.id',
+    {},
+    ALL,
+  );
   assert.deepEqual(audit.actions(), ['query.execute']);
   const detail = audit.events[0]?.detail ?? {};
   assert.match(detail['sql'] ?? '', /t_alpha\.orders/); // evidence the boundary applied
