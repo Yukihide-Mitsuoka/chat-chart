@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.0](https://github.com/Yukihide-Mitsuoka/chat-chart/compare/v1.2.0...v1.3.0) (2026-07-20)
+
+
+### Features
+
+* **executor:** HTTP transport between gate and executor ([#65](https://github.com/Yukihide-Mitsuoka/chat-chart/issues/65)) ([#66](https://github.com/Yukihide-Mitsuoka/chat-chart/issues/66)) ([3a145b0](https://github.com/Yukihide-Mitsuoka/chat-chart/commit/3a145b049349123983dc36453582fe3a461e1e41))
+* **gate:** wire the executor SEAM to the real executor ([#55](https://github.com/Yukihide-Mitsuoka/chat-chart/issues/55) A-3) ([#63](https://github.com/Yukihide-Mitsuoka/chat-chart/issues/63)) ([55bbda4](https://github.com/Yukihide-Mitsuoka/chat-chart/commit/55bbda4f3f76fac1e7171a4a135e634285196959))
+
 ## [1.2.0](https://github.com/Yukihide-Mitsuoka/chat-chart/compare/v1.1.0...v1.2.0) (2026-07-20)
 
 
