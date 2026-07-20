@@ -18,7 +18,8 @@ definitions, or NL→SQL generation.
 |-------------|-------|-------------|
 | `bindQuery(sql, binding, policy)` | domain | Validate a query and rewrite it so every physical table is bound to the tenant's dataset and every row-scoped table is wrapped in its scope filter. Returns `BoundQuery` or a typed `Rejection` |
 | `ExecuteQuery.execute(tenantId, sql, params, scope)` | application | Resolve the tenant's dataset, bind the SQL (boundary + caller-supplied row scope), run it, audit what actually ran. Refusals never reach the runner |
-| `ports.ts` interfaces | application | What adapters must implement (`QueryRunner`, `BindingResolver`, `AuditSink`); `TenantDataset` is the ① boundary fact |
+| `ports.ts` interfaces | application | What adapters must implement (`QueryRunner`, `BindingResolver`, `AuditSink`, `QueryCatalog`); `TenantDataset` is the ① boundary fact |
+| `createExecutorHandler(deps)` | interface | Inbound HTTP (`POST /v1/query`) for the production topology. Authenticates the calling gate with a shared secret before trusting the tenantId/scope it asserts |
 
 ## Events
 
@@ -63,6 +64,9 @@ reads the tenant's analytics dataset.
     refusal.
 13. The BigQuery runner never returns a partial answer as if it were complete: an
     incomplete job or a paged result is an error, not truncated rows.
+14. The HTTP interface refuses an unauthenticated caller before binding anything, and
+    compares the service secret in constant time. A malformed or missing scope is a 400 —
+    it never coerces to all-rows.
 
 ## Dependencies
 

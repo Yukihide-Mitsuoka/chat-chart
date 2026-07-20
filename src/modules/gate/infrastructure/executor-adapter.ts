@@ -12,12 +12,8 @@
 import type { AuthzContext, DataScope as GateScope } from '../domain/types.ts';
 import type { QueryExecutor } from '../application/ports.ts';
 import type { ExecuteQuery } from '../../executor/application/execute.ts';
+import type { QueryCatalog } from '../../executor/application/ports.ts';
 import type { DataScope as ExecutorScope } from '../../executor/domain/types.ts';
-
-/** Resolves a report's query id to its SQL text (control plane, ADR-0005 §5). */
-export interface QueryCatalog {
-  sqlFor(tenantId: string, queryId: string): Promise<string | null>;
-}
 
 /** The two modules describe scope identically; restate it across the boundary. */
 function toExecutorScope(scope: GateScope): ExecutorScope {

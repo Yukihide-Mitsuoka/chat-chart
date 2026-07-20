@@ -17,6 +17,7 @@ import {
   type PublicJwk,
 } from '../infrastructure/webcrypto.ts';
 import { WorkersKvStore, type WorkersKvBinding } from '../infrastructure/workers-kv.ts';
+import { HttpQueryExecutor } from '../infrastructure/http-executor.ts';
 import { createHandler } from './handler.ts';
 
 export interface GateEnv {
@@ -28,6 +29,10 @@ export interface GateEnv {
   readonly VENDOR_KEYS: string;
   /** Expected JWT `aud`. */
   readonly GATE_AUDIENCE: string;
+  /** Executor service base URL. Absent → the in-memory fallback is used. */
+  readonly EXECUTOR_URL?: string;
+  /** Shared secret proving this gate to the executor service. Never logged. */
+  readonly EXECUTOR_TOKEN?: string;
 }
 
 // SEAM (control plane = Postgres): a one-tenant fixture for local `wrangler dev`.
@@ -41,12 +46,11 @@ function bootstrapControlPlane(): MemoryControlPlane {
   });
 }
 
-// SEAM (executor): fallback stand-in used when no executor is injected.
-// The real executor module is wired in-process by a Node composition root
-// (see spikes/gate-executor-slice/), because its BigQuery credentials come
-// from google-auth-library, which is Node-only. On Workers the production
-// topology is gate → HTTP → executor service (ADR-0005 §7), so the Workers
-// entry takes a QueryExecutor rather than constructing one.
+// SEAM (executor): fallback stand-in, used only when EXECUTOR_URL/TOKEN are
+// unset. Production wires HttpQueryExecutor (see executorFor); a Node
+// composition root can inject the in-process executor instead (see
+// spikes/gate-executor-slice/), which Workers cannot do because BigQuery
+// credentials come from google-auth-library, a Node-only package.
 function bootstrapExecutor(): MemoryExecutor {
   return new MemoryExecutor({
     t_demo: [
@@ -71,6 +75,22 @@ export interface GateOverrides {
   readonly executor?: QueryExecutor;
 }
 
+/**
+ * Production topology (ADR-0005 §7): the Worker calls the executor service over
+ * HTTP, because the in-process executor needs Node-only credentials. Falls back
+ * to the in-memory stand-in only when the service is not configured, so a
+ * misconfigured deploy is obvious rather than silently serving fixture data.
+ */
+function executorFor(env: GateEnv): QueryExecutor {
+  if (env.EXECUTOR_URL === undefined || env.EXECUTOR_TOKEN === undefined) {
+    return bootstrapExecutor();
+  }
+  return new HttpQueryExecutor({
+    baseUrl: env.EXECUTOR_URL,
+    serviceToken: env.EXECUTOR_TOKEN,
+  });
+}
+
 export function buildGate(env: GateEnv, overrides: GateOverrides = {}): GateService {
   const clock = new SystemClock();
   const vendorKeys = new Map<string, PublicJwk>(
@@ -83,7 +103,7 @@ export function buildGate(env: GateEnv, overrides: GateOverrides = {}): GateServ
     resultCache: new WorkersKvStore<ResultPayload>(env.RESULT_KV),
     denylist: new WorkersKvStore<true>(env.DENYLIST_KV),
     shellCache: new WorkersKvStore<string>(env.SHELL_KV),
-    executor: overrides.executor ?? bootstrapExecutor(),
+    executor: overrides.executor ?? executorFor(env),
     hasher: new WebCryptoHasher(),
     audit: noopAudit(),
     clock,

@@ -36,3 +36,9 @@ GATE_AUDIENCE = "gate"
 #   npx wrangler secret put VENDOR_KEYS   # or a [vars] entry for local dev
 # In production this is sourced from the control-plane `vendor_keys` table.
 VENDOR_KEYS = "{}"
+
+# Executor service (ADR-0005 §7). When both are set the gate calls the service
+# over HTTP; unset, it falls back to the in-memory stand-in so a misconfigured
+# deploy is obvious rather than silently serving fixture data.
+#   npx wrangler secret put EXECUTOR_TOKEN
+# EXECUTOR_URL = "https://executor.example.internal"

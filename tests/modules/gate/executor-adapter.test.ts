@@ -3,10 +3,8 @@
 // refusal of stored report SQL is not reported as a client error.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  ExecutorQueryAdapter,
-  type QueryCatalog,
-} from '../../../src/modules/gate/infrastructure/executor-adapter.ts';
+import { ExecutorQueryAdapter } from '../../../src/modules/gate/infrastructure/executor-adapter.ts';
+import type { QueryCatalog } from '../../../src/modules/executor/application/ports.ts';
 import { ExecuteQuery } from '../../../src/modules/executor/application/execute.ts';
 import {
   MemoryAuditSink,

@@ -38,6 +38,15 @@ export interface BindingResolver {
   policyFor(tenantId: TenantId): Promise<QueryPolicy>;
 }
 
+/**
+ * Resolves a report's query id to its SQL text (control plane, ADR-0005 §5).
+ * The caller never supplies SQL: both transports pass a queryId, so the stored
+ * report definition is the only source of the statement that gets bound.
+ */
+export interface QueryCatalog {
+  sqlFor(tenantId: TenantId, queryId: string): Promise<string | null>;
+}
+
 export interface AuditSink {
   record(event: {
     readonly tenantId: TenantId;

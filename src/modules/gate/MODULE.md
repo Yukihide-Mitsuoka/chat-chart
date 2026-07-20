@@ -50,5 +50,6 @@ and writes only caches (①②③, denylist), all reconstructible.
 
 | Uses module | Via | Why |
 |-------------|-----|-----|
-| `executor` | `ExecutorQueryAdapter` (infrastructure) → `ExecuteQuery` public API | Satisfies the `QueryExecutor` port with real AST tenant binding + BigQuery (#55). The adapter is the anti-corruption layer: it hands over the gate-owned row scope and never the dataset, so the executor stays authoritative for the ① boundary |
+| `executor` (in-process) | `ExecutorQueryAdapter` (infrastructure) → `ExecuteQuery` public API | Satisfies the `QueryExecutor` port with real AST tenant binding + BigQuery (#55). The adapter is the anti-corruption layer: it hands over the gate-owned row scope and never the dataset, so the executor stays authoritative for the ① boundary |
+| `executor` (over HTTP) | `HttpQueryExecutor` (infrastructure) → the executor's `POST /v1/query` | The production Workers topology (ADR-0005 §7). Selected automatically when `EXECUTOR_URL`/`EXECUTOR_TOKEN` are set; sends tenantId + gate-derived scope, never a dataset |
 | (control plane) | — | Still a port; `worker.ts` seeds an in-memory control-plane bootstrap (marked `SEAM`). `buildGate` now accepts an injected `QueryExecutor`: Node composition roots pass the real one (see `spikes/gate-executor-slice/`), while the Workers entry keeps the fallback until a gate→executor HTTP client exists |
