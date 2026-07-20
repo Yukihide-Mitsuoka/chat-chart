@@ -50,4 +50,5 @@ and writes only caches (①②③, denylist), all reconstructible.
 
 | Uses module | Via | Why |
 |-------------|-----|-----|
-| (none yet) | — | Control plane and MCP are ports until their modules exist. Adapters shipped: WebCrypto + Workers KV (production, ADR-0006) and in-memory (tests, ARC-005 second adapter). `worker.ts` wires the real edge adapters but seeds an **in-memory control-plane + executor bootstrap** (marked `SEAM`) so `wrangler dev` runs today; replacing those two with the Postgres/MCP adapters is the remaining wiring |
+| `executor` | `ExecutorQueryAdapter` (infrastructure) → `ExecuteQuery` public API | Satisfies the `QueryExecutor` port with real AST tenant binding + BigQuery (#55). The adapter is the anti-corruption layer: it hands over the gate-owned row scope and never the dataset, so the executor stays authoritative for the ① boundary |
+| (control plane) | — | Still a port; `worker.ts` seeds an in-memory control-plane bootstrap (marked `SEAM`). `buildGate` now accepts an injected `QueryExecutor`: Node composition roots pass the real one (see `spikes/gate-executor-slice/`), while the Workers entry keeps the fallback until a gate→executor HTTP client exists |

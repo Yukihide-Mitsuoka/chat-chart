@@ -9,23 +9,18 @@ import {
   MemoryBindingResolver,
   RecordingQueryRunner,
 } from '../../../src/modules/executor/infrastructure/memory.ts';
-import type { QueryPolicy, TenantBinding } from '../../../src/modules/executor/domain/types.ts';
+import type { DataScope, QueryPolicy } from '../../../src/modules/executor/domain/types.ts';
+import type { TenantDataset } from '../../../src/modules/executor/application/ports.ts';
 
 const POLICY: QueryPolicy = {
   tables: [{ name: 'orders', scopeColumn: 'store_id' }, { name: 'categories' }],
 };
-const ALPHA: TenantBinding = {
-  tenantId: 't_alpha',
-  dataset: 't_alpha',
-  scope: { kind: 'all' },
-};
-const BRAVO: TenantBinding = {
-  tenantId: 't_bravo',
-  dataset: 't_bravo',
-  scope: { kind: 'stores', storeIds: ['s9'] },
-};
+const ALPHA: TenantDataset = { tenantId: 't_alpha', dataset: 't_alpha' };
+const BRAVO: TenantDataset = { tenantId: 't_bravo', dataset: 't_bravo' };
+const ALL: DataScope = { kind: 'all' };
+const S9: DataScope = { kind: 'stores', storeIds: ['s9'] };
 
-function harness(bindings: Record<string, TenantBinding> = { t_alpha: ALPHA, t_bravo: BRAVO }) {
+function harness(bindings: Record<string, TenantDataset> = { t_alpha: ALPHA, t_bravo: BRAVO }) {
   const runner = new RecordingQueryRunner();
   const audit = new MemoryAuditSink();
   const exec = new ExecuteQuery({
@@ -39,7 +34,7 @@ function harness(bindings: Record<string, TenantBinding> = { t_alpha: ALPHA, t_b
 test('the runner only ever sees bound SQL', async () => {
   const { exec, runner } = harness();
   runner.willReturn([{ category: 'A' }]);
-  const r = await exec.execute('t_alpha', 'SELECT category FROM orders');
+  const r = await exec.execute('t_alpha', 'SELECT category FROM orders', {}, ALL);
   assert.ok(r.ok);
   assert.match(runner.lastSql ?? '', /t_alpha\.orders/);
   assert.doesNotMatch(runner.lastSql ?? '', /FROM\s+orders/i);
@@ -47,8 +42,8 @@ test('the runner only ever sees bound SQL', async () => {
 
 test('the same query run by two tenants hits two different datasets', async () => {
   const { exec, runner } = harness();
-  await exec.execute('t_alpha', 'SELECT category FROM orders');
-  await exec.execute('t_bravo', 'SELECT category FROM orders');
+  await exec.execute('t_alpha', 'SELECT category FROM orders', {}, ALL);
+  await exec.execute('t_bravo', 'SELECT category FROM orders', {}, S9);
   const [a, b] = runner.calls.map((c) => c.sql);
   assert.match(a ?? '', /t_alpha\.orders/);
   assert.match(b ?? '', /t_bravo\.orders/);
@@ -58,7 +53,7 @@ test('the same query run by two tenants hits two different datasets', async () =
 
 test('a refused query never reaches the runner and is audited', async () => {
   const { exec, runner, audit } = harness();
-  const r = await exec.execute('t_alpha', 'SELECT * FROM t_bravo.orders');
+  const r = await exec.execute('t_alpha', 'SELECT * FROM t_bravo.orders', {}, ALL);
   assert.equal(r.ok, false);
   assert.equal(r.ok === false && r.status, 400);
   assert.equal(r.ok === false && r.reason, 'qualified-table-not-allowed');
@@ -68,7 +63,7 @@ test('a refused query never reaches the runner and is audited', async () => {
 
 test('DML is refused before execution', async () => {
   const { exec, runner } = harness();
-  const r = await exec.execute('t_alpha', 'DELETE FROM orders');
+  const r = await exec.execute('t_alpha', 'DELETE FROM orders', {}, ALL);
   assert.equal(r.ok, false);
   assert.equal(r.ok === false && r.status, 400);
   assert.equal(runner.calls.length, 0);
@@ -76,7 +71,7 @@ test('DML is refused before execution', async () => {
 
 test('an unknown tenant is refused without touching the runner', async () => {
   const { exec, runner } = harness();
-  const r = await exec.execute('t_ghost', 'SELECT category FROM orders');
+  const r = await exec.execute('t_ghost', 'SELECT category FROM orders', {}, ALL);
   assert.equal(r.ok, false);
   assert.equal(r.ok === false && r.status, 404);
   assert.equal(runner.calls.length, 0);
@@ -85,7 +80,7 @@ test('an unknown tenant is refused without touching the runner', async () => {
 test('a resolver returning a mismatched binding is refused (defence in depth)', async () => {
   // Simulates the worst resolver bug: t_alpha resolves to bravo's binding.
   const { exec, runner } = harness({ t_alpha: BRAVO });
-  const r = await exec.execute('t_alpha', 'SELECT category FROM orders');
+  const r = await exec.execute('t_alpha', 'SELECT category FROM orders', {}, ALL);
   assert.equal(r.ok, false);
   assert.equal(r.ok === false && r.status, 500);
   assert.equal(r.ok === false && r.reason, 'binding-tenant-mismatch');
@@ -94,9 +89,12 @@ test('a resolver returning a mismatched binding is refused (defence in depth)', 
 
 test('named parameters are passed through, not interpolated', async () => {
   const { exec, runner } = harness();
-  await exec.execute('t_alpha', 'SELECT category FROM orders WHERE created_at >= @since', {
-    since: '2026-01-01',
-  });
+  await exec.execute(
+    't_alpha',
+    'SELECT category FROM orders WHERE created_at >= @since',
+    { since: '2026-01-01' },
+    ALL,
+  );
   assert.deepEqual(runner.calls[0]?.params, { since: '2026-01-01' });
   assert.match(runner.lastSql ?? '', /@since/); // still a placeholder
   assert.doesNotMatch(runner.lastSql ?? '', /2026-01-01/); // value not in the SQL
@@ -105,7 +103,7 @@ test('named parameters are passed through, not interpolated', async () => {
 test('a runner failure surfaces as 500 and is audited, without leaking the driver message', async () => {
   const { exec, runner, audit } = harness();
   runner.willFail('bigquery: quota exceeded for project xyz');
-  const r = await exec.execute('t_alpha', 'SELECT category FROM orders');
+  const r = await exec.execute('t_alpha', 'SELECT category FROM orders', {}, ALL);
   assert.equal(r.ok, false);
   assert.equal(r.ok === false && r.status, 500);
   assert.equal(r.ok === false && r.reason, 'execution-failed'); // generic to the caller
@@ -115,7 +113,12 @@ test('a runner failure surfaces as 500 and is audited, without leaking the drive
 
 test('a successful run audits the bound SQL and the tables it touched', async () => {
   const { exec, audit } = harness();
-  await exec.execute('t_alpha', 'SELECT c.name FROM orders o JOIN categories c ON o.cat = c.id');
+  await exec.execute(
+    't_alpha',
+    'SELECT c.name FROM orders o JOIN categories c ON o.cat = c.id',
+    {},
+    ALL,
+  );
   assert.deepEqual(audit.actions(), ['query.execute']);
   const detail = audit.events[0]?.detail ?? {};
   assert.match(detail['sql'] ?? '', /t_alpha\.orders/); // evidence the boundary applied
@@ -134,7 +137,7 @@ test('an audit-sink outage does not fail an otherwise successful query', async (
       },
     },
   });
-  const r = await exec.execute('t_alpha', 'SELECT category FROM orders');
+  const r = await exec.execute('t_alpha', 'SELECT category FROM orders', {}, ALL);
   assert.ok(r.ok);
   assert.deepEqual(r.rows, [{ category: 'A' }]);
 });

@@ -5,7 +5,7 @@
 // been through bindQuery, and the binding comes from the control plane keyed by
 // a server-resolved tenantId — never from the caller (原則B).
 import { bindQuery } from '../domain/bind.ts';
-import type { TenantId } from '../domain/types.ts';
+import type { DataScope, TenantBinding, TenantId } from '../domain/types.ts';
 import type { AuditSink, BindingResolver, ParamValue, QueryRunner } from './ports.ts';
 
 export type ExecuteFailure = {
@@ -34,20 +34,29 @@ export class ExecuteQuery {
    * @param tenantId server-resolved (from the gate's verified context)
    * @param sql      the report's query, as authored — unbound
    * @param params   named query parameters, passed through to the runner
+   * @param scope    the caller's row scope. Required, and supplied by the
+   *   authorization layer that derived it from the principal's roles (原則E②).
+   *   Deliberately NOT resolved here: the gate already computes this scope to
+   *   build its cache key, and a second derivation could disagree with it —
+   *   which would cache rows under a key claiming a different visibility.
+   *   The executor stays authoritative for the ① tenant boundary (the dataset),
+   *   which it resolves itself and never accepts from the caller.
    */
   async execute(
     tenantId: TenantId,
     sql: string,
-    params: Readonly<Record<string, ParamValue>> = {},
+    params: Readonly<Record<string, ParamValue>>,
+    scope: DataScope,
   ): Promise<ExecuteResult> {
-    const binding = await this.#d.bindings.resolve(tenantId);
-    if (binding === null) return { ok: false, status: 404, reason: 'unknown-tenant' };
-    // Defence in depth: a resolver bug that returns another tenant's binding
-    // would silently redirect the dataset, so refuse the mismatch outright.
-    if (binding.tenantId !== tenantId)
+    const dataset = await this.#d.bindings.resolve(tenantId);
+    if (dataset === null) return { ok: false, status: 404, reason: 'unknown-tenant' };
+    // Defence in depth: a resolver bug that returns another tenant's dataset
+    // would silently redirect the query, so refuse the mismatch outright.
+    if (dataset.tenantId !== tenantId)
       return { ok: false, status: 500, reason: 'binding-tenant-mismatch' };
 
     const policy = await this.#d.bindings.policyFor(tenantId);
+    const binding: TenantBinding = { ...dataset, scope };
     const bound = bindQuery(sql, binding, policy);
     if (!bound.ok) {
       await this.#audit(tenantId, 'query.refused', {
