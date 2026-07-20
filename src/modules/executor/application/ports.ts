@@ -1,7 +1,7 @@
 // Ports the executor needs from outside (ARC-002: dependencies point inward).
 // Two implementations are expected (ARC-005): the BigQuery adapter and the
 // in-memory adapter that backs tests and local runs.
-import type { QueryPolicy, TenantBinding, TenantId } from '../domain/types.ts';
+import type { QueryPolicy, TenantId } from '../domain/types.ts';
 
 /** A named query parameter value. Values are never interpolated into SQL. */
 export type ParamValue = string | number | boolean;
@@ -20,9 +20,21 @@ export interface QueryRunner {
   >;
 }
 
+/**
+ * Where a tenant's data physically lives — the ① tenant boundary (原則E①).
+ * Infrastructure facts only: no row scope here, because that is authorization
+ * (原則E②) and is supplied per call by the layer that derived it from roles.
+ * A connected (customer-owned) warehouse adds projectId + a credential
+ * reference here; hosted vs connected is config, not code (ADR-0005 §9.2).
+ */
+export interface TenantDataset {
+  readonly tenantId: TenantId;
+  readonly dataset: string;
+}
+
 /** Where a tenant's queryable surface comes from (control plane, 原則D). */
 export interface BindingResolver {
-  resolve(tenantId: TenantId): Promise<TenantBinding | null>;
+  resolve(tenantId: TenantId): Promise<TenantDataset | null>;
   policyFor(tenantId: TenantId): Promise<QueryPolicy>;
 }
 

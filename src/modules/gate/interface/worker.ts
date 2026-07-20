@@ -8,7 +8,7 @@
 // `wrangler dev` serves real end-to-end responses today; replacing these two
 // constructions with the Postgres/MCP adapters is the entire remaining wiring.
 import { GateService } from '../application/gate-service.ts';
-import type { AuthzEntry, ResultPayload } from '../application/ports.ts';
+import type { AuthzEntry, QueryExecutor, ResultPayload } from '../application/ports.ts';
 import { MemoryControlPlane, MemoryExecutor } from '../infrastructure/memory.ts';
 import {
   Es256TokenVerifier,
@@ -41,7 +41,12 @@ function bootstrapControlPlane(): MemoryControlPlane {
   });
 }
 
-// SEAM (executor = MCP gateway): per-tenant dataset stand-in.
+// SEAM (executor): fallback stand-in used when no executor is injected.
+// The real executor module is wired in-process by a Node composition root
+// (see spikes/gate-executor-slice/), because its BigQuery credentials come
+// from google-auth-library, which is Node-only. On Workers the production
+// topology is gate → HTTP → executor service (ADR-0005 §7), so the Workers
+// entry takes a QueryExecutor rather than constructing one.
 function bootstrapExecutor(): MemoryExecutor {
   return new MemoryExecutor({
     t_demo: [
@@ -61,7 +66,12 @@ function noopAudit() {
   };
 }
 
-export function buildGate(env: GateEnv): GateService {
+/** Optional overrides for composition roots that supply real adapters. */
+export interface GateOverrides {
+  readonly executor?: QueryExecutor;
+}
+
+export function buildGate(env: GateEnv, overrides: GateOverrides = {}): GateService {
   const clock = new SystemClock();
   const vendorKeys = new Map<string, PublicJwk>(
     Object.entries(JSON.parse(env.VENDOR_KEYS) as Record<string, PublicJwk>),
@@ -73,7 +83,7 @@ export function buildGate(env: GateEnv): GateService {
     resultCache: new WorkersKvStore<ResultPayload>(env.RESULT_KV),
     denylist: new WorkersKvStore<true>(env.DENYLIST_KV),
     shellCache: new WorkersKvStore<string>(env.SHELL_KV),
-    executor: bootstrapExecutor(),
+    executor: overrides.executor ?? bootstrapExecutor(),
     hasher: new WebCryptoHasher(),
     audit: noopAudit(),
     clock,
@@ -81,7 +91,7 @@ export function buildGate(env: GateEnv): GateService {
 }
 
 export default {
-  async fetch(request: Request, env: GateEnv): Promise<Response> {
-    return createHandler(buildGate(env))(request);
+  async fetch(request: Request, env: GateEnv, overrides?: GateOverrides): Promise<Response> {
+    return createHandler(buildGate(env, overrides ?? {}))(request);
   },
 };

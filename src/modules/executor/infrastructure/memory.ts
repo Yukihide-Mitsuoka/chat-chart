@@ -1,19 +1,25 @@
 // In-memory adapters — the ARC-005 second implementation. They keep the
 // application layer runnable and testable without BigQuery, and stand in for
 // the control plane until that module exists.
-import type { QueryPolicy, TenantBinding, TenantId } from '../domain/types.ts';
-import type { AuditSink, BindingResolver, ParamValue, QueryRunner } from '../application/ports.ts';
+import type { QueryPolicy, TenantId } from '../domain/types.ts';
+import type {
+  AuditSink,
+  BindingResolver,
+  ParamValue,
+  QueryRunner,
+  TenantDataset,
+} from '../application/ports.ts';
 
 export class MemoryBindingResolver implements BindingResolver {
-  readonly #bindings: ReadonlyMap<TenantId, TenantBinding>;
+  readonly #bindings: ReadonlyMap<TenantId, TenantDataset>;
   readonly #policy: QueryPolicy;
 
-  constructor(bindings: Record<TenantId, TenantBinding>, policy: QueryPolicy) {
+  constructor(bindings: Record<TenantId, TenantDataset>, policy: QueryPolicy) {
     this.#bindings = new Map(Object.entries(bindings));
     this.#policy = policy;
   }
 
-  async resolve(tenantId: TenantId): Promise<TenantBinding | null> {
+  async resolve(tenantId: TenantId): Promise<TenantDataset | null> {
     return this.#bindings.get(tenantId) ?? null;
   }
 

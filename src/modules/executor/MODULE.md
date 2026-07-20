@@ -17,8 +17,8 @@ definitions, or NL→SQL generation.
 | Entry point | Layer | Description |
 |-------------|-------|-------------|
 | `bindQuery(sql, binding, policy)` | domain | Validate a query and rewrite it so every physical table is bound to the tenant's dataset and every row-scoped table is wrapped in its scope filter. Returns `BoundQuery` or a typed `Rejection` |
-| `ExecuteQuery.execute(tenantId, sql, params)` | application | Resolve the tenant's binding, bind the SQL, run it, audit what actually ran. Refusals never reach the runner |
-| `ports.ts` interfaces | application | What adapters must implement (`QueryRunner`, `BindingResolver`, `AuditSink`) |
+| `ExecuteQuery.execute(tenantId, sql, params, scope)` | application | Resolve the tenant's dataset, bind the SQL (boundary + caller-supplied row scope), run it, audit what actually ran. Refusals never reach the runner |
+| `ports.ts` interfaces | application | What adapters must implement (`QueryRunner`, `BindingResolver`, `AuditSink`); `TenantDataset` is the ① boundary fact |
 
 ## Events
 
@@ -50,13 +50,18 @@ reads the tenant's analytics dataset.
    else is refused.
 8. Nothing reaches the `QueryRunner` that has not been through `bindQuery` — a refusal
    short-circuits before execution.
-9. The binding is resolved from a server-supplied `tenantId`; a resolver returning a
-   binding for a different tenant is refused rather than followed.
-10. Query parameters are passed to the runner as parameters, never interpolated into the
+9. The dataset is resolved from a server-supplied `tenantId`; a resolver returning a
+   dataset for a different tenant is refused rather than followed. The ① tenant boundary
+   is never accepted from the caller.
+10. The ② row scope IS supplied by the caller (the authorization layer that derived it
+    from roles, 原則E②) and is a required argument — it can never default open. This
+    keeps a single source of truth for scope, so the ② cache key and the SQL filter
+    cannot disagree.
+11. Query parameters are passed to the runner as parameters, never interpolated into the
     SQL text.
-11. An audit-sink failure never fails an otherwise successful query, and never masks a
+12. An audit-sink failure never fails an otherwise successful query, and never masks a
     refusal.
-12. The BigQuery runner never returns a partial answer as if it were complete: an
+13. The BigQuery runner never returns a partial answer as if it were complete: an
     incomplete job or a paged result is an error, not truncated rows.
 
 ## Dependencies
