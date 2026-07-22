@@ -19,7 +19,7 @@ jobs:
       release_created: ${{ steps.rp.outputs.release_created }}
       tag_name: ${{ steps.rp.outputs.tag_name }}
     steps:
-      - uses: googleapis/release-please-action@v4
+      - uses: googleapis/release-please-action@5c625bfb5d1ff62eadeeb3772007f7f66fdcf071 # v4
         id: rp
         with:
           # TEMPLATE: set release-type (node, python, go, rust, simple, ...)
@@ -35,14 +35,14 @@ jobs:
       id-token: write      # SLSA provenance signing
       attestations: write  # SLSA provenance storage
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           ref: ${{ needs.release-please.outputs.tag_name }}
       - run: make setup
       - name: Full test suite (gate)
         run: make test
       - name: Vulnerability gate
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: fs
           scanners: vuln
@@ -50,7 +50,7 @@ jobs:
           exit-code: "1"
           ignore-unfixed: true
       - name: Generate SBOM (SPDX + CycloneDX)
-        uses: anchore/sbom-action@v0
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
         with:
           format: spdx-json
           output-file: sbom.spdx.json
@@ -60,7 +60,7 @@ jobs:
         run: make build
       - name: Attest build provenance (SLSA — SEC-031)
         if: hashFiles('dist/**') != ''
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
         with:
           subject-path: "dist/**"
       # TEMPLATE: add artifact publishing (registry push, package publish) here;

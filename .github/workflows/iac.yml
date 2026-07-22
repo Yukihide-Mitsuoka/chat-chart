@@ -25,7 +25,7 @@ jobs:
   scan:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
       - name: Detect IaC
         id: detect
         # The workflow can be triggered by editing this file itself; only scan when real
@@ -41,14 +41,14 @@ jobs:
           fi
       - name: Trivy config scan
         if: steps.detect.outputs.found == 'true'
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: config
           severity: MEDIUM,HIGH,CRITICAL
           exit-code: "1"
       - name: Checkov (second opinion — defense in depth)
         if: steps.detect.outputs.found == 'true'
-        uses: bridgecrewio/checkov-action@v12.1347.0
+        uses: bridgecrewio/checkov-action@99bb2caf247dfd9f03cf984373bc6043d4e32ebf # v12.1347.0
         with:
           soft_fail: false
           quiet: true
