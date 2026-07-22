@@ -1,21 +1,16 @@
 ---
 id: system-design
 title: ChatChart System Design — Diagrams & Schema
-updated: 2026-07-18
+updated: 2026-07-22
 ---
 
 # ChatChart システム設計図集（アーキテクチャ図・シーケンス図・DB設計）
 
-<!--
-  Note (repo governance): ADR-0002 requires English for docs/ content. Repository owner
-  decision (LOG-0020 pattern, same as requirements.md / ADR-0005): this is an early-stage
-  product-discovery document for the Japanese-speaking owner; translate when it graduates
-  to implementation-facing documentation.
--->
-
-> **規範（normative）は [ADR-0005](adr/0005-cache-and-authorization-architecture.md)**。
-> 本書はADR-0005（原則A〜E）と [requirements.md](requirements.md) を**図とスキーマに展開した派生ドキュメント**であり、
-> 矛盾があればADRが勝つ。スキーマは実装前のドラフト（実装時にマイグレーションとして確定する）。
+> **規範は [ADR-0005](adr/0005-cache-and-authorization-architecture.md) と
+> [ADR-0009](adr/0009-adopt-portable-saas-design-constraints.md)**。
+> 本書は両ADRと [requirements.md](requirements.md) を図とスキーマに展開した
+> 派生ドキュメントであり、矛盾があればADRが勝つ。スキーマは実装前のドラフト
+> （実装時にmigrationとして確定する）。
 
 ---
 
@@ -215,7 +210,7 @@ erDiagram
     jsonb data_scope "正規化してscope_hashへ"
   }
   permissions {
-    text key PK "例 report_view / report_edit"
+    text key PK "例 report:view / report:edit"
     text description "システム定義カタログ・RLS対象外"
   }
   role_permissions {
@@ -427,24 +422,52 @@ create role app_runtime login;      -- パスワードはSecret Manager側で設
 
 -- テナント所有の全表に同一形のポリシーを貼る
 do $$
-declare t text;
+declare
+  t text;
+  tenant_column text;
 begin
   foreach t in array array[
     'tenants','users','roles','role_permissions','user_roles',
     'reports','role_reports','datasources','audit_logs','revocation_events'
   ] loop
+    tenant_column := case when t = 'tenants' then 'id' else 'tenant_id' end;
     execute format('alter table %I enable row level security', t);
     execute format('alter table %I force row level security', t);  -- ownerにも適用
     execute format($p$
       create policy tenant_isolation on %I
-        using (%s = current_setting('app.tenant_id')::uuid)
-    $p$, t, case when t = 'tenants' then 'id' else 'tenant_id' end);
+        using (%I = nullif(current_setting('app.tenant_id', true), '')::uuid)
+        with check (%I = nullif(current_setting('app.tenant_id', true), '')::uuid)
+    $p$, t, tenant_column, tenant_column);
   end loop;
 end $$;
 ```
 
-- ゲート/MCPはリクエストごとに `set local app.tenant_id = '<検証済みJWT由来のUUID>'` を発行してからクエリする。**アプリ層がWHERE句を書き忘れても、RLSが他テナント行を返さない**——これが「保険」の意味。
+- ゲート/MCPは同一トランザクション・同一接続で
+  `select set_config('app.tenant_id', $1, true)` をパラメータ化して発行し、`$1` に
+  検証済みJWT由来のUUIDをbindしてからクエリする。テナントを設定しない場合は
+  `current_setting(..., true)` がNULLとなり、読み書きともfail-closedになる。
+  **アプリ層がWHERE句を書き忘れても、RLSが他テナント行を返さない**——これが
+  「保険」の意味。
 - `permissions` / `vendors` / `vendor_keys` はテナント境界の外（システム管理データ）なのでRLS対象外。`app_runtime` には必要最小限のGRANTのみ（`audit_logs` はINSERTのみ等）。
+
+### 3.4 コントロールプレーン実装契約（ADR-0009）
+
+規範は [ADR-0009](adr/0009-adopt-portable-saas-design-constraints.md)。将来の
+コントロールプレーンmoduleは、技術stackに依存しない次の境界と検証を実装する。
+
+| 関心事 | 実装境界 | 必須の実装 | 必須の検証 |
+|---|---|---|---|
+| テナントコンテキスト | interface → application | 検証済みJWTまたはWebhookの対応情報からサーバー側で確定し、applicationにはテナントスコープ付きportを渡す。リクエスト本文・query parameterの `tenant_id` は境界決定に使用しない | 偽造した `tenant_id` が無効である境界テスト |
+| PostgreSQL RLS | infrastructure adapter | 同一トランザクション・同一接続でtransaction-localなコンテキストを設定し、非ownerの `app_runtime` で実行する | 未設定時0行、テナント越境read拒否、`WITH CHECK`による越境write拒否の実Postgresテスト |
+| 特権アクセス | composition root → 専用adapter | migration、identity同期、provisioningなど承認済みconsumerだけへ能力として注入する。通常コードからimport可能なglobal clientを公開しない | consumer一覧と `MODULE.md` の一致、未承認consumerを拒否する依存境界テスト |
+| 権限語彙 | domain / application | 権限コードはコード管理の有限集合とし、tenant固有roleはその組み合わせだけを保持する | コードの権限集合とDB seedまたはmigrationの完全一致テスト |
+| 外部入力 | interface | HTTP、Webhook、環境変数を境界で一度検証し、検証済み型だけを内側へ渡す | 欠落・型違い・未知値をfail-closedにするテスト |
+| 外部エラー | interface | runtimeごとに一つの変換経路へ集約し、安定した外部コードへ変換する。SQL、接続先、credential、内部例外は外部へ返さない | driver message、SQL、内部URL、credentialがresponseに含まれないテスト |
+
+既存のGateとExecutorは、境界入力検証と安全なエラー変換を既に実装しているため、
+同じ検証・認可問い合わせを重複追加しない。新しいコントロールプレーンmoduleを追加する
+PRは、`MODULE.md` にテナントスコープ付きport、所有データ、特権consumerを定義し、
+上表のテストを実装と同時に追加する。現時点のDDLはその実装に先立つドラフトである。
 
 ---
 
@@ -500,3 +523,4 @@ key = "v1:" + tenant_id + ":" + scope_hash + ":" + query_id + ":"
 | version token失効（パージレス） | ADR §5 |
 | epoch+デニーリストのハイブリッド剥奪 | ADR §3③・requirements |
 | NL→SQLはGemini 3.5 Flash既定・Opusは最後の手段 | LOG-0022 |
+| テナントスコープ付きport・固定権限語彙・境界検証・安全なエラー変換 | ADR-0009 |

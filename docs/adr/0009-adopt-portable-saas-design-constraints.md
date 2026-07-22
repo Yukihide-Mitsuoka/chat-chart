@@ -1,7 +1,7 @@
 ---
 id: adr-0009
 title: ADR-0009 — Next.js SaaS基盤から移植可能な設計制約だけを採用する
-status: proposed
+status: accepted
 updated: 2026-07-22
 ---
 
@@ -9,7 +9,7 @@ updated: 2026-07-22
 
 | Field | Value |
 |-------|-------|
-| Status | proposed |
+| Status | accepted |
 | Date | 2026-07-22 |
 | Deciders | Repository owner |
 | Author | Codex |

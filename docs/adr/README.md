@@ -29,6 +29,6 @@ title: プロジェクトのアーキテクチャ意思決定記録
 | [0006](0006-edge-gate-runtime-cloudflare-workers.md) | Edge authorization gate runtime uses Cloudflare Workers | proposed | 2026-07-18 |
 | [0007](0007-use-one-time-protected-legacy-template-sync.md) | 保護された旧Template Syncを一度だけ使用する | accepted | 2026-07-18 |
 | [0008](0008-enable-recurring-protected-template-sync.md) | 保護されたTemplate Syncを定期実行する | accepted | 2026-07-18 |
-| [0009](0009-adopt-portable-saas-design-constraints.md) | Next.js SaaS基盤から移植可能な設計制約だけを採用する | proposed | 2026-07-22 |
+| [0009](0009-adopt-portable-saas-design-constraints.md) | Next.js SaaS基盤から移植可能な設計制約だけを採用する | accepted | 2026-07-22 |
 
 <!-- 新しいプロジェクトADRを末尾に追加する。 -->
