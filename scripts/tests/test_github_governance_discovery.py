@@ -245,6 +245,48 @@ class GitHubDiscoveryTest(unittest.TestCase):
         endpoints = [command[-1] for command, _ in runner.calls]
         self.assertNotIn("repos/acme/demo/branches/main/protection", endpoints)
 
+    def test_ruleset_only_branch_treats_confirmed_legacy_404_as_absent(self):
+        protection_endpoint = "repos/acme/demo/branches/main/protection"
+        runner = FakeRunner(
+            {
+                **observed_check_responses(),
+                "repos/acme/demo": Completed(payload=repository_payload()),
+                "repos/acme/demo/branches/main": Completed(payload=branch_payload(True)),
+                "repos/acme/demo/rules/branches/main?per_page=100": Completed(
+                    payload=[[]]
+                ),
+                protection_endpoint: Completed(
+                    returncode=1,
+                    stdout="HTTP/2.0 404 Not Found\r\n\r\n",
+                ),
+            }
+        )
+
+        result = governance.discover_github("acme/demo", "main", runner=runner)
+
+        self.assertEqual(result["legacy_branch_protection"]["status"], "absent")
+        self.assertEqual(
+            [command[-1] for command, _ in runner.calls].count(protection_endpoint),
+            2,
+        )
+
+    def test_unreadable_legacy_status_remains_unknown_for_an_admin(self):
+        runner = FakeRunner(
+            {
+                **observed_check_responses(),
+                "repos/acme/demo": Completed(payload=repository_payload()),
+                "repos/acme/demo/branches/main": Completed(payload=branch_payload(True)),
+                "repos/acme/demo/rules/branches/main?per_page=100": Completed(
+                    payload=[[]]
+                ),
+                "repos/acme/demo/branches/main/protection": Completed(returncode=1),
+            }
+        )
+
+        result = governance.discover_github("acme/demo", "main", runner=runner)
+
+        self.assertEqual(result["legacy_branch_protection"]["status"], "unknown")
+
     def test_admin_visible_disabled_security_controls_are_not_unknown(self):
         runner = FakeRunner(
             {

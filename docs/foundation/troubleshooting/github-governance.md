@@ -1,7 +1,7 @@
 ---
 id: github-governance-troubleshooting
 title: GitHub Governance Troubleshooting
-updated: 2026-07-18
+updated: 2026-07-22
 ---
 
 # GitHub Governance Troubleshooting
@@ -29,6 +29,26 @@ not observed on the target branch head is also drift.
 **Prevention:** Run `plan` after changing policy or required workflow names.
 
 **Refs:** #18, ADR-0003
+
+## `apply` verifies a Ruleset action but fails during replanning
+
+**Affects:** `scripts/github_governance.py apply`
+
+**Cause:** GitHub reports a branch protected by a Ruleset as `protected=true`, while the
+legacy branch-protection endpoint returns HTTP 404 because no classic protection exists.
+Older reconciler versions treated this combination as an unreadable legacy policy and
+made the otherwise compliant report `unknown`.
+
+**Fix:** Update to a reconciler containing issue #56. Rerun `plan`; a repository-admin
+read that confirms HTTP 404 is recorded as absent legacy protection. Do not repeat
+`apply` while the report is `unknown`; first verify that every attempted action reached
+`compliant` in the redacted failure evidence.
+
+**Prevention:** Keep the discovery regression for a Ruleset-only branch. Permission or
+transport failures must remain `unknown`; only a confirmed 404 with repository-admin
+access proves absence.
+
+**Refs:** #56, ADR-0003
 
 ## `governance policy error: profiles must form one parent chain rooted at ai-dev-foundation`
 

@@ -673,6 +673,26 @@ def _legacy_inventory(protected, protection):
     }
 
 
+def _discover_legacy_protection(repository, branch_path, protected, admin_access, runner):
+    if not protected:
+        return _legacy_inventory(False, None)
+    endpoint = f"repos/{repository}/branches/{branch_path}/protection"
+    protection = _gh_get_json(endpoint, runner, optional=True)
+    if protection is not None:
+        return _legacy_inventory(True, protection)
+    if admin_access is not True:
+        return _legacy_inventory(True, None)
+    try:
+        status = _gh_get_status(endpoint, runner)
+    except PolicyError:
+        return _legacy_inventory(True, None)
+    return (
+        _legacy_inventory(False, None)
+        if status == 404
+        else _legacy_inventory(True, None)
+    )
+
+
 def discover_github(repository, branch, runner=None):
     """Read and redact GitHub governance state without making write requests."""
     if (
@@ -696,20 +716,18 @@ def discover_github(repository, branch, runner=None):
     protected = branch_data.get("protected")
     if type(protected) is not bool:
         raise PolicyError("GitHub branch response is missing the protected boolean")
-    rules = _normalize_rules(rules_data)
-    protection = (
-        _gh_get_json(
-            f"repos/{repository}/branches/{branch_path}/protection",
-            runner,
-            optional=True,
-        )
-        if protected
-        else None
-    )
     permissions = repository_data.get("permissions")
     admin_access = permissions.get("admin") if type(permissions) is dict else UNKNOWN
     if type(admin_access) is not bool:
         admin_access = UNKNOWN
+    rules = _normalize_rules(rules_data)
+    legacy_branch_protection = _discover_legacy_protection(
+        repository,
+        branch_path,
+        protected,
+        admin_access,
+        runner,
+    )
     security = _security_inventory(repository_data)
     security.update(
         {
@@ -731,7 +749,7 @@ def discover_github(repository, branch, runner=None):
         "api_version": API_VERSION,
         "branch": {"name": branch, "protected": protected},
         "effective_rules": rules,
-        "legacy_branch_protection": _legacy_inventory(protected, protection),
+        "legacy_branch_protection": legacy_branch_protection,
         "observed_checks": _observed_checks(repository, branch_data, runner),
         "repository": {
             "allow_merge_commit": _known(repository_data.get("allow_merge_commit"), bool),
