@@ -72,8 +72,8 @@ jobs:
           fi
           body="Direct-parent-source: https://github.com/${SOURCE_REPOSITORY}@${SOURCE_COMMIT}
 
-Before merge:
-- Review the accepted lock-to-source commit range.
-- Port direct-parent workflow changes in a separate reviewed PR.
-- Update .github/inheritance/lock.json only after the complete parent delta is accepted."
+          Before merge:
+          - Review the accepted lock-to-source commit range.
+          - Port direct-parent workflow changes in a separate reviewed PR.
+          - Update .github/inheritance/lock.json only after the complete parent delta is accepted."
           gh pr edit "$PR_NUMBER" --body "$body"
