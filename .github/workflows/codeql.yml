@@ -22,10 +22,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # TEMPLATE: set your language(s): javascript-typescript, python, go, java-kotlin,
-        # csharp, cpp, ruby, swift. Empty matrix = workflow skipped until configured.
-        language: []
-        # language: [javascript-typescript]
+        language: [javascript-typescript, python]
     steps:
       - uses: actions/checkout@v6
       - uses: github/codeql-action/init@v3
