@@ -5,7 +5,8 @@
 # OPT-IN and safe by default: the job only runs when the repository variable
 # TEMPLATE_SYNC_ENABLED is set to "true". So the template repo itself and any unmodified
 # downstream repo never run it (no spurious weekly failures). To enable sync in a
-# downstream repo: set repo variable TEMPLATE_SYNC_ENABLED=true.
+# downstream repo: set repo variable TEMPLATE_SYNC_ENABLED=true and verify its direct
+# parent below.
 name: Template Sync
 
 on:
@@ -25,22 +26,54 @@ jobs:
       pull-requests: write
     steps:
       - uses: actions/checkout@v6
-      - name: Resolve full foundation source commit
-        id: foundation-source
-        shell: bash
-        run: |
-          set -euo pipefail
-          read -r source_sha _ <<< "$(git ls-remote https://github.com/Yukihide-Mitsuoka/ai-dev-foundation.git refs/heads/main)"
-          if [[ ! "$source_sha" =~ ^[0-9a-f]{40}$ ]]; then
-            echo "Unable to resolve the full ai-dev-foundation main commit" >&2
-            exit 1
-          fi
-          echo "sha=$source_sha" >> "$GITHUB_OUTPUT"
       - uses: AndreasAugustin/actions-template-sync@v2
+        id: template-sync
         with:
+          # This repository syncs only from its direct parent. A repository created from
+          # chat-chart must repoint this field to Yukihide-Mitsuoka/chat-chart.
           source_repo_path: "Yukihide-Mitsuoka/ai-dev-foundation"
           upstream_branch: main
           pr_title: "build: sync with ai-dev-foundation template"
-          pr_body: "Foundation-source: https://github.com/Yukihide-Mitsuoka/ai-dev-foundation@${{ steps.foundation-source.outputs.sha }}"
+          pr_body: >-
+            Direct-parent source commit will be recorded after synchronization. Before
+            merge, review the accepted lock-to-source range and update
+            .github/inheritance/lock.json in this PR.
           pr_labels: "type:ci,type:dependencies"
           pr_commit_msg: "build: sync with ai-dev-foundation template"
+      - name: Record exact direct-parent source commit
+        if: steps.template-sync.outputs.pr_branch != ''
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ steps.template-sync.outputs.pr_number }}
+          PR_BRANCH: ${{ steps.template-sync.outputs.pr_branch }}
+          SOURCE_SHORT: ${{ steps.template-sync.outputs.template_git_hash }}
+          SOURCE_REPOSITORY: "Yukihide-Mitsuoka/ai-dev-foundation"
+        run: |
+          set -euo pipefail
+          if [[ -z "$SOURCE_SHORT" ]]; then
+            SOURCE_SHORT="${PR_BRANCH##*_}"
+          fi
+          if [[ ! "$SOURCE_SHORT" =~ ^[0-9a-f]{7,40}$ ]]; then
+            echo "Template Sync returned an invalid abbreviated source commit" >&2
+            exit 1
+          fi
+          SOURCE_COMMIT="$(gh api "repos/${SOURCE_REPOSITORY}/commits/${SOURCE_SHORT}" --jq .sha)"
+          if [[ ! "$SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ || "$SOURCE_COMMIT" != "$SOURCE_SHORT"* ]]; then
+            echo "Unable to expand the Template Sync source commit" >&2
+            exit 1
+          fi
+          if [[ -z "$PR_NUMBER" ]]; then
+            PR_NUMBER="$(gh pr view "$PR_BRANCH" --json number --jq .number)"
+          fi
+          if [[ ! "$PR_NUMBER" =~ ^[0-9]+$ ]]; then
+            echo "Template Sync returned an invalid pull request number" >&2
+            exit 1
+          fi
+          body="Direct-parent-source: https://github.com/${SOURCE_REPOSITORY}@${SOURCE_COMMIT}
+
+Before merge:
+- Review the accepted lock-to-source commit range.
+- Port direct-parent workflow changes in a separate reviewed PR.
+- Update .github/inheritance/lock.json only after the complete parent delta is accepted."
+          gh pr edit "$PR_NUMBER" --body "$body"

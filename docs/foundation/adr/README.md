@@ -29,5 +29,6 @@ process in `.skills/architecture.skill.md`.
 | [0004](0004-harden-multi-level-template-inheritance.md) | Harden multi-level template inheritance | accepted | 2026-07-16 |
 | [0005](0005-separate-foundation-and-project-document-languages.md) | Separate foundation and project document languages | accepted | 2026-07-18 |
 | [0006](0006-reserve-a-foundation-documentation-namespace.md) | Reserve a foundation documentation namespace | accepted | 2026-07-18 |
+| [0007](0007-constrain-transitional-template-sync.md) | Constrain transitional Template Sync | accepted | 2026-07-22 |
 
 <!-- Append new ADRs to this table (newest last). -->

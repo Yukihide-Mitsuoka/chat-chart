@@ -7,19 +7,14 @@ WORKFLOW = REPOSITORY_ROOT / ".github" / "workflows" / "template-sync.yml"
 
 
 class TemplateSyncWorkflowTest(unittest.TestCase):
-    def test_pull_request_body_contains_full_foundation_source_commit(self):
+    def test_pull_request_body_contains_exact_action_source_commit(self):
         workflow = WORKFLOW.read_text(encoding="utf-8")
 
-        self.assertIn(
-            "git ls-remote https://github.com/Yukihide-Mitsuoka/ai-dev-foundation.git",
-            workflow,
-        )
-        self.assertIn(
-            'pr_body: "Foundation-source: '
-            'https://github.com/Yukihide-Mitsuoka/ai-dev-foundation@'
-            '${{ steps.foundation-source.outputs.sha }}"',
-            workflow,
-        )
+        self.assertIn("id: template-sync", workflow)
+        self.assertIn("steps.template-sync.outputs.pr_branch", workflow)
+        self.assertIn('SOURCE_REPOSITORY: "Yukihide-Mitsuoka/ai-dev-foundation"', workflow)
+        self.assertIn('gh api "repos/${SOURCE_REPOSITORY}/commits/${SOURCE_SHORT}"', workflow)
+        self.assertIn("gh pr edit", workflow)
 
 
 if __name__ == "__main__":

@@ -45,11 +45,16 @@ class TemplateInheritanceTest(unittest.TestCase):
         self.inheritance_directory.mkdir(parents=True)
         self.manifest_path = self.inheritance_directory / "manifest.json"
         self.lock_path = self.inheritance_directory / "lock.json"
+        self.ignore_path = self.root / ".templatesyncignore"
         self.write_contract(valid_manifest(), valid_lock())
+        self.write_ignore(valid_manifest()["protected_paths"] + [".github/workflows/**"])
 
     def write_contract(self, manifest, lock):
         self.manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
         self.lock_path.write_text(json.dumps(lock), encoding="utf-8")
+
+    def write_ignore(self, entries):
+        self.ignore_path.write_text("\n".join(entries) + "\n", encoding="utf-8")
 
     def assert_manifest_error(self, manifest):
         self.write_contract(manifest, valid_lock())
@@ -101,6 +106,38 @@ class TemplateInheritanceTest(unittest.TestCase):
             manifest["protected_paths"].remove(path)
             with self.subTest(path=path):
                 self.assert_manifest_error(manifest)
+
+    def test_every_protected_root_must_be_covered_by_template_sync_ignore(self):
+        self.write_ignore(
+            path for path in valid_manifest()["protected_paths"] if path != ".gitignore"
+        )
+
+        with self.assertRaisesRegex(
+            inheritance.InheritanceError,
+            r"template sync ignore.*\.gitignore",
+        ):
+            inheritance.validate_inheritance(self.root)
+
+    def test_template_sync_must_exclude_every_workflow(self):
+        self.write_ignore(valid_manifest()["protected_paths"])
+
+        with self.assertRaisesRegex(
+            inheritance.InheritanceError,
+            r"template sync ignore.*\.github/workflows/",
+        ):
+            inheritance.validate_inheritance(self.root)
+
+    def test_template_sync_exception_cannot_reinclude_a_protected_root(self):
+        self.write_ignore(
+            valid_manifest()["protected_paths"]
+            + [".github/workflows/**", ":!.github/workflows/security.yml"]
+        )
+
+        with self.assertRaisesRegex(
+            inheritance.InheritanceError,
+            r"template sync exception.*security.yml",
+        ):
+            inheritance.validate_inheritance(self.root)
 
     def test_lock_must_match_parent_and_pin_a_full_commit(self):
         for parent, commit in (("acme/other", COMMIT), (PARENT, "abc123"), (PARENT, "0" * 40)):

@@ -9,7 +9,9 @@
 #   2. No file carries the "collapsed frontmatter" signature a non-frontmatter-aware
 #      formatter produces (guards against the LOG-0007 regression recurring).
 #   3. GitHub governance inheritance rejects invalid or weakening policy.
-#   4. Foundation-owned project-documentation guides do not occupy project-owned paths.
+#   4. Child repositories with a manifest satisfy the local inheritance and legacy
+#      Template Sync protection contract.
+#   5. Foundation-owned project-documentation guides do not occupy project-owned paths.
 
 set -u
 cd "$(dirname "$0")/.." || exit 9
@@ -40,7 +42,14 @@ fi
 python3 -m unittest discover -s scripts/tests -p 'test_*.py' || err "GitHub governance policy tests failed"
 python3 scripts/github_governance.py validate --root . >/dev/null || err "GitHub governance policy is invalid"
 
-# 4. ADR-0006 ownership boundary: reusable scaffolding belongs under docs/foundation/.
+# 4. ADR-0007: validate the actual child contract, not only unit-test fixtures. The
+# foundation root has no child manifest, so this remains a no-op there.
+if [ -f ".github/inheritance/manifest.json" ]; then
+  python3 scripts/template_inheritance.py validate --root . >/dev/null || \
+    err "Template inheritance and legacy sync protection contract is invalid"
+fi
+
+# 5. ADR-0006 ownership boundary: reusable scaffolding belongs under docs/foundation/.
 # Only the canonical foundation repository bans legacy project-path copies. Legacy
 # direct Template Sync children do not necessarily carry an inheritance manifest, so
 # manifest absence cannot identify the root. Children may validly create repository-owned
@@ -104,6 +113,7 @@ for path in \
   docs/foundation/adr/0004-harden-multi-level-template-inheritance.md \
   docs/foundation/adr/0005-separate-foundation-and-project-document-languages.md \
   docs/foundation/adr/0006-reserve-a-foundation-documentation-namespace.md \
+  docs/foundation/adr/0007-constrain-transitional-template-sync.md \
   docs/foundation/troubleshooting/README.md \
   docs/foundation/troubleshooting/github-governance.md \
   docs/foundation/troubleshooting/template-inheritance.md \

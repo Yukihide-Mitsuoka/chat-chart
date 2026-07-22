@@ -11,6 +11,7 @@ from pathlib import Path
 
 SCHEMA_VERSION = 1
 MANIFEST_PATH = ".github/inheritance/manifest.json"
+TEMPLATE_SYNC_IGNORE_PATH = ".templatesyncignore"
 MAX_CONTRACT_BYTES = 1_000_000
 MAX_OWNERSHIP_ROOTS = 1_000
 MAX_FIRST_PARENT_COMMITS = 100_000
@@ -24,6 +25,7 @@ REQUIRED_PROTECTED_PATHS = {
     ".github/workflows/template-sync.yml",
     ".templatesyncignore",
 }
+REQUIRED_TEMPLATE_SYNC_IGNORES = {".github/workflows/"}
 
 
 class InheritanceError(ValueError):
@@ -137,6 +139,74 @@ def _read_json(root, relative_path):
         raise InheritanceError(f"{relative_path} must contain valid UTF-8 JSON") from error
 
 
+def _read_template_sync_ignore(root):
+    candidate = root / TEMPLATE_SYNC_IGNORE_PATH
+    try:
+        resolved = candidate.resolve(strict=True)
+    except OSError as error:
+        raise InheritanceError(
+            f"{TEMPLATE_SYNC_IGNORE_PATH} must be a file inside the repository root"
+        ) from error
+    if resolved != candidate or not resolved.is_relative_to(root) or not resolved.is_file():
+        raise InheritanceError(
+            f"{TEMPLATE_SYNC_IGNORE_PATH} must be a non-symlink file inside the repository root"
+        )
+    try:
+        if resolved.stat().st_size > MAX_CONTRACT_BYTES:
+            raise InheritanceError(f"{TEMPLATE_SYNC_IGNORE_PATH} exceeds {MAX_CONTRACT_BYTES} bytes")
+        lines = resolved.read_text(encoding="utf-8").splitlines()
+    except (OSError, UnicodeError) as error:
+        raise InheritanceError(f"{TEMPLATE_SYNC_IGNORE_PATH} must contain valid UTF-8 text") from error
+
+    positive = []
+    exceptions = []
+    for line_number, line in enumerate(lines, start=1):
+        entry = line.strip()
+        if not entry or entry.startswith("#"):
+            continue
+        destination = exceptions if entry.startswith(":!") else positive
+        root_entry = entry[2:] if destination is exceptions else entry
+        if root_entry.endswith("/**"):
+            root_entry = root_entry[:-2]
+        try:
+            destination.append(
+                _ownership_root(root_entry, f"{TEMPLATE_SYNC_IGNORE_PATH}:{line_number}")
+            )
+        except InheritanceError as error:
+            raise InheritanceError(
+                f"{TEMPLATE_SYNC_IGNORE_PATH}:{line_number} must be a literal path, "
+                "directory, directory/**, or :! exception"
+            ) from error
+    return positive, exceptions
+
+
+def _covers(outer, inner):
+    return outer == inner or (outer.endswith("/") and inner.startswith(outer))
+
+
+def _validate_template_sync_ignore(root, protected):
+    positive, exceptions = _read_template_sync_ignore(root)
+    required = sorted(set(protected) | REQUIRED_TEMPLATE_SYNC_IGNORES)
+    missing = sorted(
+        path for path in required if not any(_covers(entry, path) for entry in positive)
+    )
+    if missing:
+        raise InheritanceError(f"template sync ignore is missing protected paths: {missing}")
+    unsafe_exceptions = sorted(
+        exception
+        for exception in exceptions
+        if any(_overlaps(exception, protected_root) for protected_root in required)
+    )
+    if unsafe_exceptions:
+        raise InheritanceError(
+            f"template sync exception re-includes protected paths: {unsafe_exceptions}"
+        )
+    return {
+        "ignore_file": TEMPLATE_SYNC_IGNORE_PATH,
+        "required": required,
+    }
+
+
 def validate_inheritance(root):
     """Validate manifest, lock, and exclusive path ownership without external I/O."""
     try:
@@ -172,6 +242,8 @@ def validate_inheritance(root):
     if missing:
         raise InheritanceError(f"manifest is missing required protected paths: {missing}")
 
+    template_sync = _validate_template_sync_ignore(repository_root, protected)
+
     lock = _read_json(repository_root, lock_file)
     _object(lock, {"schema_version", "parent"}, "lock")
     if type(lock["schema_version"]) is not int or lock["schema_version"] != SCHEMA_VERSION:
@@ -189,6 +261,7 @@ def validate_inheritance(root):
         "parent": {"repository": parent_repository, "branch": parent_branch, "commit": commit},
         "lock_file": lock_file,
         "ownership": {"inherited": sorted(inherited), "protected": sorted(protected)},
+        "template_sync": template_sync,
     }
 
 

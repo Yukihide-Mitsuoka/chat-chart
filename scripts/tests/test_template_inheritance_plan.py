@@ -102,6 +102,11 @@ class TemplateInheritancePlanTest(unittest.TestCase):
         lock = {"schema_version": 1, "parent": {"repository": PARENT_REPOSITORY, "commit": commit}}
         self.write(self.child, ".github/inheritance/manifest.json", json.dumps(manifest))
         self.write(self.child, ".github/inheritance/lock.json", json.dumps(lock))
+        self.write(
+            self.child,
+            ".templatesyncignore",
+            "\n".join(PROTECTED_PATHS + [".github/workflows/**"]) + "\n",
+        )
 
     def snapshot_child(self):
         return {
