@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.1](https://github.com/Yukihide-Mitsuoka/chat-chart/compare/v1.3.0...v1.3.1) (2026-07-22)
+
+
+### Bug Fixes
+
+* **governance:** adopt ruleset-only discovery ([#71](https://github.com/Yukihide-Mitsuoka/chat-chart/issues/71)) ([48d147a](https://github.com/Yukihide-Mitsuoka/chat-chart/commit/48d147a81d8210cf025e896c8787c3f5603195a9))
+* **sync:** adopt safe parent propagation ([#69](https://github.com/Yukihide-Mitsuoka/chat-chart/issues/69)) ([697bd66](https://github.com/Yukihide-Mitsuoka/chat-chart/commit/697bd662c21964488fc99f0f39e50586d1701a89))
+
 ## [1.3.0](https://github.com/Yukihide-Mitsuoka/chat-chart/compare/v1.2.0...v1.3.0) (2026-07-20)
 
 
