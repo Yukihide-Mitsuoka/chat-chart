@@ -8,7 +8,10 @@
   },
   "scripts": {
     "build": "tsc --noEmit",
-    "dev": "echo 'nothing runnable yet — the gate Workers adapter PR adds a dev server' && exit 1"
+    "dev": "echo 'nothing runnable yet \u2014 the gate Workers adapter PR adds a dev server' && exit 1",
+    "migrate": "node migrations/run.mjs",
+    "migrate:status": "node migrations/run.mjs --status",
+    "migrate:verify": "node migrations/verify.mjs"
   },
   "devDependencies": {
     "@types/node": "^26.1.1",
@@ -17,6 +20,7 @@
   },
   "dependencies": {
     "google-auth-library": "^10.9.0",
-    "node-sql-parser": "^5.4.0"
+    "node-sql-parser": "^5.4.0",
+    "postgres": "^3.4.9"
   }
 }
