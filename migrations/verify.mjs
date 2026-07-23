@@ -4,7 +4,8 @@
 // production schema. Runs against whatever DATABASE_URL points at — a local
 // Docker Postgres in CI-style checks, or Neon.
 //
-//   node migrations/verify.mjs         # uses APP_RUNTIME_URL (app_runtime login)
+//   node migrations/verify.mjs   # connects as app_runtime (derived from
+//                                  DATABASE_URL host + APP_RUNTIME_PASSWORD)
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -21,11 +22,26 @@ try {
 }
 
 const ownerUrl = (process.env.DATABASE_URL ?? '').replace('-pooler.', '.');
-const appUrl = (process.env.APP_RUNTIME_URL ?? '').replace('-pooler.', '.');
-if (!ownerUrl || !appUrl) {
-  console.error('need DATABASE_URL (owner) and APP_RUNTIME_URL (app_runtime login)');
+if (!ownerUrl) {
+  console.error('DATABASE_URL is not set');
   process.exit(2);
 }
+// The app_runtime connection is always derived from the owner URL's host plus
+// APP_RUNTIME_PASSWORD, so that password has exactly one source of truth (the
+// value the runner set on the role). Deliberately NOT a separate URL var — two
+// hand-written copies of one password only ever drift apart.
+function appRuntimeUrl() {
+  const pw = process.env.APP_RUNTIME_PASSWORD;
+  if (!pw) {
+    console.error('APP_RUNTIME_PASSWORD is not set (the app_runtime login password)');
+    process.exit(2);
+  }
+  const u = new URL(ownerUrl);
+  u.username = 'app_runtime';
+  u.password = pw;
+  return u.toString();
+}
+const appUrl = appRuntimeUrl();
 
 const owner = postgres(ownerUrl, { max: 1, onnotice: () => {} });
 const app = postgres(appUrl, { max: 1, onnotice: () => {} });
