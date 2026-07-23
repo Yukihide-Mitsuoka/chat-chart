@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.2](https://github.com/Yukihide-Mitsuoka/chat-chart/compare/v1.3.1...v1.3.2) (2026-07-23)
+
+
+### Bug Fixes
+
+* **security:** configure CodeQL language matrix ([#78](https://github.com/Yukihide-Mitsuoka/chat-chart/issues/78)) ([caf389c](https://github.com/Yukihide-Mitsuoka/chat-chart/commit/caf389cc1cb06a4d41bc84579a22ca6e69ec2227))
+* **sync:** keep PR body inside workflow script ([#76](https://github.com/Yukihide-Mitsuoka/chat-chart/issues/76)) ([20aa8c0](https://github.com/Yukihide-Mitsuoka/chat-chart/commit/20aa8c02bbb1644d8d088545926f7cf63de1fbc1))
+
 ## [1.3.1](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.3.0...v1.3.1) (2026-07-22)
 
 
