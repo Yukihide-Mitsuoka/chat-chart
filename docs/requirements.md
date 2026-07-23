@@ -1,6 +1,6 @@
 ---
 id: requirements
-title: 要件定義書 — ChatChart（マルチテナント型 AI-BI SaaS / Evidence × MCP）
+title: 要件定義書 — RepChat（マルチテナント型 AI-BI SaaS / Evidence × MCP）
 status: draft
 updated: 2026-07-16
 ---
@@ -13,7 +13,7 @@ updated: 2026-07-16
   these decisions.
 -->
 
-# 【要件定義書 v1】ChatChart — マルチテナント型 AI-BI SaaS（Evidence × MCP）
+# 【要件定義書 v1】RepChat — マルチテナント型 AI-BI SaaS（Evidence × MCP）
 
 > **v1の立ち位置**：v0（統合要件定義書）で見えた3つの楽観——①静的SSGとアクセス制御の矛盾、②サポート原価とCACの欠落、③工数の過小——を「設計判断」として潰したバージョン。数字は"守り"で引き直し、獲得とセキュリティ証明を工程に組み込む。**動くデモではなく、売れる最小プロダクトを定義する**ことを目的とする。
 

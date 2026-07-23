@@ -1,10 +1,10 @@
 ---
 id: system-design
-title: ChatChart System Design — Diagrams & Schema
+title: RepChat System Design — Diagrams & Schema
 updated: 2026-07-22
 ---
 
-# ChatChart システム設計図集（アーキテクチャ図・シーケンス図・DB設計）
+# RepChat システム設計図集（アーキテクチャ図・シーケンス図・DB設計）
 
 > **規範は [ADR-0005](adr/0005-cache-and-authorization-architecture.md) と
 > [ADR-0009](adr/0009-adopt-portable-saas-design-constraints.md)**。
@@ -481,7 +481,7 @@ GCPプロジェクト: kotonoha-bi-dev（リネームせず維持）
 ```
 
 - テナント分離方式（**未確定・ADR §10-6**）: テナント別データセット vs 行アクセスポリシー vs authorized view。1サービスアカウント多テナント構成では行ポリシー運用がやや厄介で、**データセット分離が最も単純・堅牢な公算**。デザインパートナーのデータ形態を見て確定する。
-- 供給元（**未確定・ADR §10-7**）: ChatChartホスト型か、パートナー既存ウェアハウス接続か。どちらでも `datasources` 抽象（§3.2）で表現できる。
+- 供給元（**未確定・ADR §10-7**）: RepChatホスト型か、パートナー既存ウェアハウス接続か。どちらでも `datasources` 抽象（§3.2）で表現できる。
 - NL→SQLの実行先はここ。精度はspike済み（合成 12/12・実スキーマthelook 12/12、`spikes/nl2sql-*`）。
 
 ### 4.1 「Parquet事前エクスポート→Evidenceビルド」パターンとの関係

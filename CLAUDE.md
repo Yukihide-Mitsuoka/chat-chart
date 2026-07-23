@@ -12,7 +12,7 @@ conflict, follow the authority order in [.ai/README.md](.ai/README.md)
 
 | Field | Value |
 |-------|-------|
-| Project | ChatChart — see [.ai/mission.md](.ai/mission.md) |
+| Project | RepChat — see [.ai/mission.md](.ai/mission.md) |
 | Stack | TypeScript/Node (Evidence + edge gate + MCP server) · Python (NL→SQL, spikes) · Postgres+RLS (Neon planned) · Vertex AI Gemini — details in [.ai/architecture.md](.ai/architecture.md) |
 | Architecture | Modular monolith, Clean Architecture, DDD — [.ai/architecture.md](.ai/architecture.md) |
 | Branching | GitHub Flow; `main` always releasable |

@@ -30,7 +30,7 @@ jobs:
         id: template-sync
         with:
           # This repository syncs only from its direct parent. A repository created from
-          # chat-chart must repoint this field to Yukihide-Mitsuoka/chat-chart.
+          # repchat must repoint this field to Yukihide-Mitsuoka/repchat.
           source_repo_path: "Yukihide-Mitsuoka/ai-dev-foundation"
           upstream_branch: main
           pr_title: "build: sync with ai-dev-foundation template"

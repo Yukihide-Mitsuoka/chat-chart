@@ -44,15 +44,15 @@ mechanism for the analytics side, verified end to end.
 ## Authentication — this spike vs. production (open design question)
 
 This spike authenticates with **ADC as the developer's own account**, querying datasets
-*we host* in `kotonoha-bi-dev`. That is fine for the "ChatChart hosts the analytics data"
+*we host* in `kotonoha-bi-dev`. That is fine for the "RepChat hosts the analytics data"
 model, but it does **not** answer how to query a **customer's own** BigQuery/warehouse,
 where ADC-as-us has no access. That provenance choice is ADR-0005 §10-7, still open, and
 the auth mechanism follows from it:
 
-- **Hosted (ChatChart owns the data)** — ADC / a ChatChart service account, exactly as
+- **Hosted (RepChat owns the data)** — ADC / a RepChat service account, exactly as
   here. Per-tenant datasets in our project.
 - **Connected (customer owns the warehouse)** — the customer grants access to a
-  ChatChart-provided service-account email (BigQuery `roles/bigquery.dataViewer` on their
+  RepChat-provided service-account email (BigQuery `roles/bigquery.dataViewer` on their
   dataset), and the `BindingResolver` hands back that customer's project/dataset +
   credential reference (stored in the control plane as a Secret Manager reference, never
   in the repo — GR-001). ADC-as-developer is **not** the production path here.

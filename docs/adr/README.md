@@ -5,7 +5,7 @@ title: プロジェクトのアーキテクチャ意思決定記録
 
 # プロジェクトのArchitecture Decision Records（ADR）
 
-このディレクトリには、ChatChartプロジェクト固有の長期的な設計判断を記録します。
+このディレクトリには、RepChatプロジェクト固有の長期的な設計判断を記録します。
 基盤から継承する判断は
 [基盤ADR](../foundation/adr/README.md) にあり、ここには複製しません。
 アーキテクチャ変更では GR-022 と `.skills/architecture.skill.md` に従います。

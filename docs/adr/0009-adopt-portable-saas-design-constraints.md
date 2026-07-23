@@ -17,11 +17,11 @@ updated: 2026-07-22
 
 ## Context
 
-ChatChartは `ai-dev-foundation` を直接継承している。一方、
+RepChatは `ai-dev-foundation` を直接継承している。一方、
 `nextjs-saas-template` にはテナント分離、権限管理、入力検証、エラー秘匿に
 関する再利用価値のある設計がある。ただし、同テンプレートは Next.js App
 Router、Clerk Organizations、Stripe、Prisma、Cloud SQL、Cloud Run を前提とし、
-ChatChartのCloudflare Workers上の認可Gate、独自のID連携、BigQueryと
+RepChatのCloudflare Workers上の認可Gate、独自のID連携、BigQueryと
 PostgreSQLを分離したデータ構成とは技術境界が異なる。
 
 2026-07-22時点の `nextjs-saas-template`
@@ -38,7 +38,7 @@ PostgreSQLを分離したデータ構成とは技術境界が異なる。
 - インフラ障害の詳細を外部へ露出させず、インターフェース層で安定したエラーへ
   一元変換する。
 
-ChatChartには既に、PostgreSQL RLSの実証（LOG-0032）、Gateによる認可責務
+RepChatには既に、PostgreSQL RLSの実証（LOG-0032）、Gateによる認可責務
 （LOG-0035）、HTTP境界の入力検証とエラー秘匿（LOG-0036）がある。これらを
 別実装で置き換える必要はない。一方、将来のコントロールプレーン実装に同じ制約を
 適用することはまだ明文化されておらず、実装者がテナント指定可能な汎用DBクライアント
@@ -53,16 +53,16 @@ ChatChartには既に、PostgreSQL RLSの実証（LOG-0032）、Gateによる認
 
 ### Option 2: 継承元を `nextjs-saas-template` に変更する
 
-同テンプレートの変更を継続的に受け取れる。しかし、直接親の技術前提がChatChartと
+同テンプレートの変更を継続的に受け取れる。しかし、直接親の技術前提がRepChatと
 一致せず、Next.js、Clerk、Stripe、Prismaなど不要な実装の競合面と同期負担が増える。
 また、基盤ADR-0004はNext.jsのapplication、authentication、paymentを利用先所有とし、
 親の追加hopにはmerge latencyが伴うとしている。異なるstackの選択を継承上の責務へ
 変えることは、この境界と運用コストに合わない。
 
-### Option 3: 移植可能な制約だけをChatChartの設計として採用する
+### Option 3: 移植可能な制約だけをRepChatの設計として採用する
 
 有用な安全性を技術選定から分離して取り込み、既存のGate、Executor、RLS設計を
-維持できる。採用する制約と対象外を明示できる一方、将来の実装時にChatChart固有の
+維持できる。採用する制約と対象外を明示できる一方、将来の実装時にRepChat固有の
 アダプターとテストを作る必要がある。
 
 ### Option 4: 共通SaaS層を新しい継承テンプレートとして抽出する
@@ -72,9 +72,9 @@ ChatChartには既に、PostgreSQL RLSの実証（LOG-0032）、Gateによる認
 
 ## Decision
 
-Option 3を採用する。ChatChartの直接の継承元は `ai-dev-foundation` のままとし、
+Option 3を採用する。RepChatの直接の継承元は `ai-dev-foundation` のままとし、
 `nextjs-saas-template` のファイルやスタック固有実装は継承・複製しない。代わりに、
-次の制約をChatChartのコントロールプレーンおよび新しい外部インターフェースへ適用する。
+次の制約をRepChatのコントロールプレーンおよび新しい外部インターフェースへ適用する。
 
 1. 通常のアプリケーションコードは、サーバー側で確定したテナントにスコープされた
    ポートを使用しなければならない。クライアント入力からテナント境界を決定しては

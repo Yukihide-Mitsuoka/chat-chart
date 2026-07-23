@@ -29,7 +29,7 @@ The template's reference module (`modules/catalog/` + `tests/modules/catalog/`) 
 deleted when this repo finished instantiation (#13), per the template's own guidance.
 For a shape to imitate (COD-050), see the example in the
 [ai-dev-foundation template](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation).
-Real ChatChart modules will follow the ARC-001 layout above.
+Real RepChat modules will follow the ARC-001 layout above.
 
 ## MODULE.md template
 
