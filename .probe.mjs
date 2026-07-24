@@ -1,0 +1,10 @@
+import { bindQuery } from './src/modules/executor/domain/bind.ts';
+import sqlParser from 'node-sql-parser';
+const { Parser } = sqlParser;
+const P = { tables: [{ name: 'orders', scopeColumn: 'store_id' }, { name: 'categories' }] };
+const b = { tenantId: 't', dataset: 't_alpha', scope: { kind: 'stores', storeIds: ['s1', 's2'] } };
+const r = bindQuery('SELECT o.amount FROM orders o JOIN categories c ON c.id = o.cat', b, P);
+console.log('SQL:', r.sql);
+const ast = new Parser().astify(r.sql, { database: 'bigquery' });
+const from = (Array.isArray(ast) ? ast[0] : ast).from;
+console.log('FROM[0]:', JSON.stringify(from[0], null, 1).slice(0, 1400));

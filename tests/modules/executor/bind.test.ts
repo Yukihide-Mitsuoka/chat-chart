@@ -3,14 +3,14 @@
 // data no matter how the SQL is shaped.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { bindQuery } from '../../../src/modules/executor/domain/bind.ts';
+import { assertRowScopeBound, bindQuery } from '../../../src/modules/executor/domain/bind.ts';
 import type { QueryPolicy, TenantBinding } from '../../../src/modules/executor/domain/types.ts';
 
 const POLICY: QueryPolicy = {
   tables: [
     { name: 'orders', scopeColumn: 'store_id' },
     { name: 'stores', scopeColumn: 'id' },
-    { name: 'categories' }, // dimension: tenant-scoped, not row-scoped
+    { name: 'categories', scopeColumn: null }, // dimension: tenant-scoped, not row-scoped
   ],
 };
 const ALPHA: TenantBinding = {
@@ -190,4 +190,67 @@ test('query parameters survive the rewrite', () => {
   const sql = sqlOf(bind('SELECT category FROM orders WHERE created_at >= @since'));
   assert.match(sql, /@since/);
   assert.match(sql, /t_alpha\.orders/);
+});
+
+// --- ② row-scope self-check (ADR-0010, LOG-0040) -----------------------------
+// Unlike ① tenant isolation, the row scope has no data-layer backstop: if the
+// binder fails to wrap a table, nothing downstream notices. These pin the two
+// halves of the fix — an undeclared policy is refused, and rewritten SQL is
+// re-parsed and checked against the principal's actual scope.
+
+test('a table whose policy omits scopeColumn is refused, not treated as unscoped', () => {
+  const incomplete = { tables: [{ name: 'orders' }] } as unknown as QueryPolicy;
+  const r = bindQuery('SELECT * FROM orders', ALPHA_S1, incomplete);
+  assert.equal(r.ok, false);
+  assert.equal(r.ok === false && r.code, 'policy-incomplete');
+});
+
+test('null scopeColumn is accepted — a dimension says "not row-scoped" out loud', () => {
+  const sql = sqlOf(bind('SELECT name FROM categories', ALPHA_S1));
+  assert.match(sql, /t_alpha\.categories/);
+  assert.doesNotMatch(sql, /IN \('s1'\)/); // no filter invented for a dimension
+});
+
+test('the self-check accepts every shape the binder actually produces', () => {
+  const shapes = [
+    'SELECT category FROM orders',
+    'SELECT c.name FROM orders o JOIN categories c ON o.cat = c.id',
+    'SELECT * FROM orders WHERE id IN (SELECT id FROM stores)',
+    'WITH x AS (SELECT * FROM orders) SELECT * FROM x',
+    'SELECT category FROM orders UNION ALL SELECT category FROM categories',
+    'SELECT (SELECT COUNT(*) FROM stores) AS n FROM orders',
+  ];
+  for (const sql of shapes) {
+    assert.equal(
+      assertRowScopeBound(sqlOf(bind(sql, ALPHA_S1)), ALPHA_S1.scope, POLICY),
+      null,
+      sql,
+    );
+  }
+});
+
+test('the self-check rejects a row-scoped table that escaped the wrapper', () => {
+  const r = assertRowScopeBound('SELECT * FROM t_alpha.orders', ALPHA_S1.scope, POLICY);
+  assert.equal(r?.ok, false);
+  assert.match(r?.detail ?? '', /orders/);
+});
+
+test('the self-check rejects a filter carrying another principal stores', () => {
+  const forged = "SELECT * FROM (SELECT * FROM t_alpha.orders WHERE store_id IN ('s9')) AS o";
+  assert.equal(assertRowScopeBound(forged, ALPHA_S1.scope, POLICY)?.ok, false);
+});
+
+test('the self-check rejects a filter on the wrong column', () => {
+  const forged = "SELECT * FROM (SELECT * FROM t_alpha.orders WHERE region IN ('s1')) AS o";
+  assert.equal(assertRowScopeBound(forged, ALPHA_S1.scope, POLICY)?.ok, false);
+});
+
+test('one wrapped use does not excuse a second bare use of the same table', () => {
+  const half =
+    "SELECT * FROM (SELECT * FROM t_alpha.orders WHERE store_id IN ('s1')) AS a, t_alpha.orders b";
+  assert.equal(assertRowScopeBound(half, ALPHA_S1.scope, POLICY)?.ok, false);
+});
+
+test('an all-rows principal has nothing to verify', () => {
+  assert.equal(assertRowScopeBound('SELECT * FROM t_alpha.orders', ALPHA.scope, POLICY), null);
 });
