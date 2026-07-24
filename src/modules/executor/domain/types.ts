@@ -20,12 +20,16 @@ export interface TenantBinding {
 }
 
 /**
- * One queryable table. `scopeColumn` names the column the row scope filters on;
- * tables without one are tenant-scoped but not row-scoped (e.g. dimensions).
+ * One queryable table. `scopeColumn` names the column the row scope filters on.
+ * It is REQUIRED, and `null` means "deliberately not row-scoped" (e.g. a
+ * dimension table): an omitted column would be indistinguishable from a
+ * forgotten one, and forgetting silently returns every row. Declaring it
+ * explicitly turns that maintenance obligation into a machine-checked one
+ * (ADR-0010 D6).
  */
 export interface TableRule {
   readonly name: string;
-  readonly scopeColumn?: string;
+  readonly scopeColumn: string | null;
 }
 
 /** The allowlist a query is checked against — nothing outside it is reachable. */
@@ -39,6 +43,7 @@ export type RejectionCode =
   | 'not-a-select'
   | 'table-not-allowed'
   | 'qualified-table-not-allowed'
+  | 'policy-incomplete'
   | 'rewrite-failed';
 
 export interface Rejection {

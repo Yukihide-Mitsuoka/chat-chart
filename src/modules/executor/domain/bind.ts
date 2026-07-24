@@ -5,13 +5,25 @@
 // subqueries all carry the boundary.
 //
 // Fail-closed by construction: after rewriting we re-parse the output and
-// assert that every remaining base table is qualified to this tenant's dataset.
+// assert two things independently of the walker that produced it —
+//   ① every remaining base table is qualified to this tenant's dataset, and
+//   ② every row-scoped table sits inside this principal's scope filter.
 // A gap in the walker therefore yields a rejection, never a leak (the same
 // belt-and-suspenders idea as the gate's payload tenant assert, 原則C-4).
+// The ② check is what ADR-0010 / LOG-0040 found missing: unlike ①, the row
+// scope has no data-layer backstop, so this self-check is all that stands
+// behind it.
 // node-sql-parser ships CommonJS, so the ESM loader cannot see its named
 // exports — take the default and destructure.
 import sqlParser from 'node-sql-parser';
-import type { BoundQuery, QueryPolicy, Rejection, TableRule, TenantBinding } from './types.ts';
+import type {
+  BoundQuery,
+  DataScope,
+  QueryPolicy,
+  Rejection,
+  TableRule,
+  TenantBinding,
+} from './types.ts';
 import { reject } from './types.ts';
 
 const { Parser } = sqlParser;
@@ -53,13 +65,9 @@ export function bindQuery(
   if (!SAFE_IDENT.test(binding.dataset))
     return reject('rewrite-failed', `unsafe dataset identifier: ${binding.dataset}`);
 
-  const rules = new Map<string, TableRule>();
-  for (const t of policy.tables) {
-    if (!SAFE_IDENT.test(t.name)) return reject('rewrite-failed', `unsafe table name: ${t.name}`);
-    if (t.scopeColumn !== undefined && !SAFE_IDENT.test(t.scopeColumn))
-      return reject('rewrite-failed', `unsafe scope column: ${t.scopeColumn}`);
-    rules.set(t.name.toLowerCase(), t);
-  }
+  const compiled = compileRules(policy);
+  if ('ok' in compiled) return compiled;
+  const rules = compiled;
 
   const scopeValues = binding.scope.kind === 'stores' ? binding.scope.storeIds : [];
   for (const v of scopeValues) {
@@ -115,7 +123,7 @@ export function bindQuery(
     }
     referenced.add(`${binding.dataset}.${rule.name}`);
 
-    const rowScoped = rule.scopeColumn !== undefined && binding.scope.kind === 'stores';
+    const rowScoped = rule.scopeColumn !== null && binding.scope.kind === 'stores';
     if (!rowScoped) {
       item.db = binding.dataset; // dataset qualification = tenant isolation
       return;
@@ -153,13 +161,7 @@ export function bindQuery(
         const stmt = cte['stmt'];
         const body = isRecord(stmt) && isSelect(stmt['ast']) ? stmt['ast'] : stmt;
         if (isSelect(body)) walkSelect(body, cteNames); // may reference earlier CTEs
-        const cteName = cte['name'];
-        const label =
-          typeof cteName === 'string'
-            ? cteName
-            : isRecord(cteName) && typeof cteName['value'] === 'string'
-              ? cteName['value']
-              : undefined;
+        const label = cteLabelOf(cte['name']);
         if (label !== undefined) cteNames.add(label.toLowerCase());
       }
     }
@@ -208,7 +210,53 @@ export function bindQuery(
   const verified = verifyAllQualified(parser, bound, binding.dataset);
   if (verified !== null) return verified;
 
+  const scoped = verifyRowScope(parser, bound, binding.scope, rules);
+  if (scoped !== null) return scoped;
+
   return { ok: true, sql: bound, tables: [...referenced].sort() };
+}
+
+/**
+ * Index the allowlist by table name, refusing a policy that leaves a table's
+ * row-scope status undeclared. Absence is not "no row scope" — it is
+ * indistinguishable from a forgotten column, and treating it as unscoped would
+ * return every row. `null` is how a dimension table says so out loud
+ * (ADR-0010 D6: a control that needs remembering must fail closed).
+ */
+function compileRules(policy: QueryPolicy): Map<string, TableRule> | Rejection {
+  const rules = new Map<string, TableRule>();
+  for (const t of policy.tables) {
+    if (!SAFE_IDENT.test(t.name)) return reject('rewrite-failed', `unsafe table name: ${t.name}`);
+    if (t.scopeColumn === undefined)
+      return reject('policy-incomplete', `table declares no scopeColumn (use null): ${t.name}`);
+    if (t.scopeColumn !== null && !SAFE_IDENT.test(t.scopeColumn))
+      return reject('rewrite-failed', `unsafe scope column: ${t.scopeColumn}`);
+    rules.set(t.name.toLowerCase(), t);
+  }
+  return rules;
+}
+
+/**
+ * Verify that `sql` binds the row scope at every use of a row-scoped table.
+ * `bindQuery` runs this on its own output; exported because the invariant is
+ * meaningful for any SQL, and because proving that it *rejects* requires
+ * feeding it SQL no correct binder would produce.
+ */
+export function assertRowScopeBound(
+  sql: string,
+  scope: DataScope,
+  policy: QueryPolicy,
+): Rejection | null {
+  const compiled = compileRules(policy);
+  if ('ok' in compiled) return compiled;
+  return verifyRowScope(new Parser(), sql, scope, compiled);
+}
+
+/** The name a CTE is declared under, in either shape node-sql-parser emits. */
+function cteLabelOf(cteName: unknown): string | undefined {
+  if (typeof cteName === 'string') return cteName;
+  if (isRecord(cteName) && typeof cteName['value'] === 'string') return cteName['value'];
+  return undefined;
 }
 
 /**
@@ -238,6 +286,133 @@ function verifyAllQualified(parser: SqlParser, sql: string, dataset: string): Re
       return reject('rewrite-failed', `table left unqualified after rewrite: ${table}`);
     }
     return reject('rewrite-failed', `table bound to an unexpected dataset: ${db}.${table}`);
+  }
+  return null;
+}
+
+/**
+ * Self-check for the ② row scope, symmetric to verifyAllQualified's ① check:
+ * re-parse the rewritten SQL and confirm that every row-scoped table sits
+ * inside a subquery whose WHERE is exactly this principal's scope filter. A
+ * table the walker failed to wrap surfaces here as a rejection instead of as
+ * extra rows in the response.
+ *
+ * This does NOT catch a table the policy never declared as row-scoped — the
+ * check reads the same policy the walker did, so it cannot detect that policy
+ * being wrong. That omission is made impossible upstream instead, by requiring
+ * `scopeColumn` to be declared (null for "not row-scoped"). The two together
+ * are what ADR-0010 adopts; neither alone is sufficient.
+ */
+function verifyRowScope(
+  parser: SqlParser,
+  sql: string,
+  scope: DataScope,
+  rules: ReadonlyMap<string, TableRule>,
+): Rejection | null {
+  if (scope.kind !== 'stores') return null; // nothing was wrapped, nothing to verify
+  const expected = [...scope.storeIds].sort().join(' ');
+
+  let ast: unknown;
+  try {
+    ast = parser.astify(sql, DIALECT);
+  } catch (e) {
+    return reject('rewrite-failed', e instanceof Error ? e.message : 'unverifiable rewrite');
+  }
+  const root = Array.isArray(ast) ? ast[0] : ast;
+  if (!isSelect(root)) return reject('rewrite-failed', 'rewritten SQL is no longer a SELECT');
+
+  let failure: Rejection | null = null;
+
+  /** A base table in `enclosing`'s FROM must carry its scope filter there. */
+  function checkTable(item: FromItem, enclosing: SelectNode, cteNames: ReadonlySet<string>): void {
+    const name = item.table;
+    if (name === undefined || cteNames.has(name.toLowerCase())) return;
+    const rule = rules.get(name.toLowerCase());
+    if (rule === undefined || rule.scopeColumn === null) return;
+    if (scopeFilterOf(enclosing['where'], rule.scopeColumn) !== expected)
+      failure = reject('rewrite-failed', `row scope not bound at every use of ${name}`);
+  }
+
+  function checkSelect(node: SelectNode, inherited: ReadonlySet<string>): void {
+    if (failure) return;
+    const cteNames = new Set(inherited);
+    const withs = node['with'];
+    if (Array.isArray(withs)) {
+      for (const cte of withs) {
+        if (!isRecord(cte)) continue;
+        const stmt = cte['stmt'];
+        const body = isRecord(stmt) && isSelect(stmt['ast']) ? stmt['ast'] : stmt;
+        if (isSelect(body)) checkSelect(body, cteNames);
+        const label = cteLabelOf(cte['name']);
+        if (label !== undefined) cteNames.add(label.toLowerCase());
+      }
+    }
+    const from = node['from'];
+    if (Array.isArray(from)) {
+      for (const raw of from) {
+        if (!isRecord(raw)) continue;
+        const item = raw as FromItem;
+        const nested = item.expr?.ast;
+        if (isSelect(nested)) checkSelect(nested, cteNames);
+        else checkTable(item, node, cteNames);
+        if (failure) return;
+      }
+    }
+    for (const [key, value] of Object.entries(node)) {
+      if (key === 'from' || key === 'with') continue;
+      deepCheck(value, cteNames);
+      if (failure) return;
+    }
+  }
+
+  function deepCheck(value: unknown, cteNames: ReadonlySet<string>): void {
+    if (failure || !isRecord(value)) return;
+    if (isSelect(value)) {
+      checkSelect(value, cteNames);
+      return;
+    }
+    for (const inner of Object.values(value)) {
+      if (Array.isArray(inner)) for (const v of inner) deepCheck(v, cteNames);
+      else deepCheck(inner, cteNames);
+      if (failure) return;
+    }
+  }
+
+  checkSelect(root, new Set());
+  return failure;
+}
+
+/**
+ * The scope values a `WHERE <column> IN (...)` binds, canonicalized for
+ * comparison — or null when `where` is not exactly that filter on `column`.
+ * Deliberately strict: it recognizes only the shape bindTable emits, so a
+ * change there fails this check loudly instead of weakening it silently.
+ */
+function scopeFilterOf(where: unknown, column: string): string | null {
+  if (!isRecord(where) || where['type'] !== 'binary_expr' || where['operator'] !== 'IN')
+    return null;
+  if (columnNameOf(where['left']) !== column) return null;
+  const right = where['right'];
+  if (!isRecord(right) || right['type'] !== 'expr_list' || !Array.isArray(right['value']))
+    return null;
+  const values: string[] = [];
+  for (const v of right['value']) {
+    if (!isRecord(v)) return null;
+    if (v['value'] === null) continue; // IN (NULL) — the empty-scope form, matches nothing
+    if (typeof v['value'] !== 'string') return null;
+    values.push(v['value']);
+  }
+  return values.sort().join(' ');
+}
+
+/** The column a column_ref names, in either shape node-sql-parser emits. */
+function columnNameOf(node: unknown): string | null {
+  if (!isRecord(node) || node['type'] !== 'column_ref') return null;
+  const col = node['column'];
+  if (typeof col === 'string') return col;
+  if (isRecord(col)) {
+    const expr = col['expr'];
+    if (isRecord(expr) && typeof expr['value'] === 'string') return expr['value'];
   }
   return null;
 }
