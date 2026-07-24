@@ -13,7 +13,10 @@ import type { DataScope, QueryPolicy } from '../../../src/modules/executor/domai
 import type { TenantDataset } from '../../../src/modules/executor/application/ports.ts';
 
 const POLICY: QueryPolicy = {
-  tables: [{ name: 'orders', scopeColumn: 'store_id' }, { name: 'categories' }],
+  tables: [
+    { name: 'orders', scopeColumn: 'store_id' },
+    { name: 'categories', scopeColumn: null },
+  ],
 };
 const ALPHA: TenantDataset = { tenantId: 't_alpha', dataset: 't_alpha' };
 const BRAVO: TenantDataset = { tenantId: 't_bravo', dataset: 't_bravo' };

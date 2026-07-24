@@ -17,6 +17,7 @@ definitions, or NL→SQL generation.
 | Entry point | Layer | Description |
 |-------------|-------|-------------|
 | `bindQuery(sql, binding, policy)` | domain | Validate a query and rewrite it so every physical table is bound to the tenant's dataset and every row-scoped table is wrapped in its scope filter. Returns `BoundQuery` or a typed `Rejection` |
+| `assertRowScopeBound(sql, scope, policy)` | domain | Check that SQL binds the row scope at every use of a row-scoped table. `bindQuery` runs it on its own output; exported because the invariant holds for any SQL, and proving it *rejects* needs input no correct binder produces. Returns `null` when bound, a `Rejection` otherwise |
 | `ExecuteQuery.execute(tenantId, sql, params, scope)` | application | Resolve the tenant's dataset, bind the SQL (boundary + caller-supplied row scope), run it, audit what actually ran. Refusals never reach the runner |
 | `ports.ts` interfaces | application | What adapters must implement (`QueryRunner`, `BindingResolver`, `AuditSink`, `QueryCatalog`); `TenantDataset` is the ① boundary fact |
 | `createExecutorHandler(deps)` | interface | Inbound HTTP (`POST /v1/query`) for the production topology. Authenticates the calling gate with a shared secret before trusting the tenantId/scope it asserts |
@@ -49,6 +50,16 @@ reads the tenant's analytics dataset.
    the caller's dataset; a walker gap therefore yields `rewrite-failed`, never a leak.
 7. Identifiers and scope values emitted into SQL text are charset-validated; anything
    else is refused.
+8. A table whose policy entry leaves `scopeColumn` undeclared is refused
+   (`policy-incomplete`), never treated as unscoped. `null` is how a dimension declares
+   "not row-scoped" out loud — an omission would be indistinguishable from forgetting,
+   and forgetting returns every row (ADR-0010 D6).
+9. After rewriting, the output is re-parsed a second time and every row-scoped table
+   verified to sit inside **this principal's** scope filter — the same column, the same
+   store set. Symmetric to invariant 6, and load-bearing in a way 6 is not: unlike the
+   tenant boundary, the row scope has no data-layer backstop behind it
+   (ADR-0010, LOG-0040). Exposed as `assertRowScopeBound` so the rejection path is
+   testable with SQL no correct binder would produce.
 8. Nothing reaches the `QueryRunner` that has not been through `bindQuery` — a refusal
    short-circuits before execution.
 9. The dataset is resolved from a server-supplied `tenantId`; a resolver returning a
