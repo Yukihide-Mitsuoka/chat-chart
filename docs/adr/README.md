@@ -31,5 +31,6 @@ title: プロジェクトのアーキテクチャ意思決定記録
 | [0008](0008-enable-recurring-protected-template-sync.md) | 保護されたTemplate Syncを定期実行する | accepted | 2026-07-18 |
 | [0009](0009-adopt-portable-saas-design-constraints.md) | Next.js SaaS基盤から移植可能な設計制約だけを採用する | accepted | 2026-07-22 |
 | [0010](0010-connection-identity-is-never-a-person.md) | 接続主体は決して人間にしない — 多接続SaaSのアクセス制御モデル | proposed | 2026-07-24 |
+| [0011](0011-datasource-scope-and-tiers.md) | 接続データソースを階層化し、2つ目はアーキテクチャ検証で選ぶ | proposed | 2026-07-24 |
 
 <!-- 新しいプロジェクトADRを末尾に追加する。 -->
